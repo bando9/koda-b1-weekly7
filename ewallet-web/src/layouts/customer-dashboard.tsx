@@ -154,7 +154,6 @@ export default function CustomerDashboard() {
           </section>
 
           <div className="mb-6 lg:mb-7 lg:grid lg:grid-cols-12 lg:gap-6">
-            {/* Balance Card Container (Desktop memiliki pembungkus card putih di luar card biru) */}
             <section className="mb-6 lg:col-span-8 lg:mb-0 lg:rounded-3xl lg:bg-white lg:p-4">
               <Card className="h-full rounded-3xl border-0 bg-[#1D61E7] px-6 py-7 text-white shadow-none ring-0 lg:rounded-2xl lg:px-7 lg:py-7">
                 <CardContent className="flex min-h-[140px] flex-col justify-between p-0 lg:min-h-[168px]">
