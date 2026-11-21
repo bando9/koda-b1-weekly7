@@ -475,3 +475,9 @@ E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\obj\Debug\ne
 E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\obj\Debug\net10.0\Ewallet.Mvc.pdb
 E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\obj\Debug\net10.0\Ewallet.Mvc.genruntimeconfig.cache
 E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\obj\Debug\net10.0\ref\Ewallet.Mvc.dll
+E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\bin\Debug\net10.0\Ewallet.Application.dll
+E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\bin\Debug\net10.0\Ewallet.Domain.dll
+E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\bin\Debug\net10.0\Ewallet.Infrastructure.dll
+E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\bin\Debug\net10.0\Ewallet.Application.pdb
+E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\bin\Debug\net10.0\Ewallet.Infrastructure.pdb
+E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\bin\Debug\net10.0\Ewallet.Domain.pdb

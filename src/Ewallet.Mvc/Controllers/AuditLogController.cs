@@ -1,6 +1,6 @@
-using Ewallet.Mvc.DTOs;
-using Ewallet.Mvc.Models;
-using Ewallet.Mvc.Services;
+﻿using Ewallet.Application.DTOs;
+using Ewallet.Domain.Entities;
+using Ewallet.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ewallet.Mvc.Controllers;
