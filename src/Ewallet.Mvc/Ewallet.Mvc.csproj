@@ -18,4 +18,10 @@
     
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Ewallet.Application\Ewallet.Application.csproj" />
+    <ProjectReference Include="..\Ewallet.Infrastructure\Ewallet.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>
+ 

@@ -1191,6 +1191,43 @@
         "build": {
           "buildTransitive/net8.0/_._": {}
         }
+      },
+      "Ewallet.Application/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v10.0",
+        "dependencies": {
+          "Ewallet.Domain": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Ewallet.Application.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Ewallet.Application.dll": {}
+        }
+      },
+      "Ewallet.Domain/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v10.0",
+        "compile": {
+          "bin/placeholder/Ewallet.Domain.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Ewallet.Domain.dll": {}
+        }
+      },
+      "Ewallet.Infrastructure/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v10.0",
+        "dependencies": {
+          "Ewallet.Application": "1.0.0",
+          "Ewallet.Domain": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Ewallet.Infrastructure.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Ewallet.Infrastructure.dll": {}
+        }
       }
     }
   },
@@ -3615,10 +3652,27 @@
         "system.security.cryptography.protecteddata.nuspec",
         "useSharedDesignerContext.txt"
       ]
+    },
+    "Ewallet.Application/1.0.0": {
+      "type": "project",
+      "path": "../Ewallet.Application/Ewallet.Application.csproj",
+      "msbuildProject": "../Ewallet.Application/Ewallet.Application.csproj"
+    },
+    "Ewallet.Domain/1.0.0": {
+      "type": "project",
+      "path": "../Ewallet.Domain/Ewallet.Domain.csproj",
+      "msbuildProject": "../Ewallet.Domain/Ewallet.Domain.csproj"
+    },
+    "Ewallet.Infrastructure/1.0.0": {
+      "type": "project",
+      "path": "../Ewallet.Infrastructure/Ewallet.Infrastructure.csproj",
+      "msbuildProject": "../Ewallet.Infrastructure/Ewallet.Infrastructure.csproj"
     }
   },
   "projectFileDependencyGroups": {
     "net10.0": [
+      "Ewallet.Application >= 1.0.0",
+      "Ewallet.Infrastructure >= 1.0.0",
       "Microsoft.AspNetCore.OpenApi >= 10.0.4",
       "Microsoft.EntityFrameworkCore.Design >= 10.0.14",
       "Microsoft.EntityFrameworkCore.SqlServer >= 10.0.14",
@@ -3653,7 +3707,14 @@
         "net10.0": {
           "framework": "net10.0",
           "targetAlias": "net10.0",
-          "projectReferences": {}
+          "projectReferences": {
+            "E:\\code\\koda-projects\\1-task\\fase-2\\koda-b1-weekly7\\src\\Ewallet.Application\\Ewallet.Application.csproj": {
+              "projectPath": "E:\\code\\koda-projects\\1-task\\fase-2\\koda-b1-weekly7\\src\\Ewallet.Application\\Ewallet.Application.csproj"
+            },
+            "E:\\code\\koda-projects\\1-task\\fase-2\\koda-b1-weekly7\\src\\Ewallet.Infrastructure\\Ewallet.Infrastructure.csproj": {
+              "projectPath": "E:\\code\\koda-projects\\1-task\\fase-2\\koda-b1-weekly7\\src\\Ewallet.Infrastructure\\Ewallet.Infrastructure.csproj"
+            }
+          }
         }
       },
       "warningProperties": {
