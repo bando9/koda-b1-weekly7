@@ -11,7 +11,6 @@ public interface IAppDbContext
     DbSet<PaymentMethod> PaymentMethods { get; }
     DbSet<TopUpRequest> TopUpRequests { get; }
     DbSet<Transaction> Transactions { get; }
-    DbSet<User> Users { get; }
     DbSet<Wallet> Wallets { get; }
     DbSet<WalletMutation> WalletMutations { get; }
 

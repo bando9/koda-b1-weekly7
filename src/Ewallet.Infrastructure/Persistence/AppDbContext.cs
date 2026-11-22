@@ -1,12 +1,15 @@
 ﻿using Ewallet.Application.Exceptions;
 using Ewallet.Application.Repositories;
 using Ewallet.Domain.Entities;
+using Ewallet.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ewallet.Infrastructure.Persistence;
 
-public sealed class AppDbContext : DbContext, IAppDbContext
+public sealed class AppDbContext : IdentityDbContext<AppUser, IdentityRole<long>, long>, IAppDbContext // *Beda (long=>Guid)
 {
     public AppDbContext(DbContextOptions<AppDbContext> options): base(options){}
 
@@ -14,7 +17,6 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>(); 
     public DbSet<TopUpRequest> TopUpRequests => Set<TopUpRequest>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
-    public DbSet<User> Users => Set<User>();
     public DbSet<Wallet> Wallets => Set<Wallet>();
     public DbSet<WalletMutation> WalletMutations => Set<WalletMutation>();
 
@@ -24,33 +26,15 @@ public sealed class AppDbContext : DbContext, IAppDbContext
         base.OnModelCreating(modelBuilder);
 
         // *Users
-        modelBuilder.Entity<User>(entity =>
+        modelBuilder.Entity<AppUser>(entity =>
         {
-            entity.ToTable("Users", "dbo", table =>
-            {
-                table.HasCheckConstraint("CK_Users_Status", "[Status] IN ('ACTIVE', 'SUSPENDED')");
-            });
 
-            entity.HasKey(u => u.Id);
-            entity.Property(u => u.Id).UseIdentityColumn();
+            entity.Property(u=>u.FullName).HasMaxLength(150).IsRequired();
 
-            entity.Property(u => u.Username).HasMaxLength(50).IsRequired();
-            entity.HasIndex(u => u.Username).IsUnique();
-            
-            entity.Property(u => u.FullName).HasMaxLength(100).IsRequired();
-            
-            entity.Property(u => u.Email).HasMaxLength(150).IsRequired();
-            entity.HasIndex(u => u.Email).IsUnique();
-            
-            entity.Property(u => u.Phone).HasMaxLength(20).IsRequired();
-            entity.HasIndex(u => u.Phone).IsUnique();
-
-            entity.Property(u => u.PasswordHash).HasMaxLength(500);
-            
             entity.Property(u => u.Status).HasConversion<string>().HasColumnType("varchar(20)").IsRequired();
-            
-            entity.Property(u => u.CreatedAtUtc).HasColumnType("DATETIME2").HasDefaultValueSql("SYSUTCDATETIME()").IsRequired();
-            entity.Property(u => u.UpdatedAtUtc).HasColumnType("DATETIME2").IsRequired(false);
+
+            entity.Property(u => u.PhoneNumber).HasMaxLength(20).IsRequired();
+            entity.HasIndex(u => u.PhoneNumber).IsUnique();
 
         });
     
@@ -78,7 +62,7 @@ public sealed class AppDbContext : DbContext, IAppDbContext
             entity.Property(w => w.CreatedAtUtc).HasColumnType("DATETIME2").HasDefaultValueSql("SYSUTCDATETIME()").IsRequired();
             entity.Property(w => w.UpdatedAtUtc).HasColumnType("DATETIME2").IsRequired(false);
 
-            entity.HasOne(w => w.User).WithOne(u => u.Wallet).HasForeignKey<Wallet>(u=>u.UserId).IsRequired().OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<AppUser>().WithOne().HasForeignKey<Wallet>(u=>u.UserId).IsRequired().OnDelete(DeleteBehavior.Restrict);
             
             entity.HasIndex(w=>w.UserId).IsUnique();
         });
@@ -221,7 +205,7 @@ public sealed class AppDbContext : DbContext, IAppDbContext
             entity.Property(a=>a.CorrelationId).HasMaxLength(100).IsRequired(false);
             entity.Property(a=>a.CreatedAtUtc).HasColumnType("datetime2").HasDefaultValueSql("SYSUTCDATETIME()").IsRequired();
 
-            entity.HasOne(a=>a.ActorUser).WithMany(u=>u.AuditLogs).IsRequired(false).HasForeignKey(a=>a.ActorUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<AppUser>().WithMany().IsRequired(false).HasForeignKey(a=>a.ActorUserId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne(a=>a.Transaction).WithMany(t=>t.AuditLogs).HasForeignKey(a=>a.TransactionId).OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(a=>new{a.ActorUserId,a.CreatedAtUtc}).IsDescending(false,true);

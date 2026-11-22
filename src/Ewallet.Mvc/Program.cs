@@ -6,6 +6,7 @@ using Ewallet.Application.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using Ewallet.Infrastructure;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,6 +52,27 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+
+
+// *RateLimiter
+// builder.Services.AddRateLimiter(options =>
+// {
+//     options.AddPolicy("auth", ctx =>
+//     {
+//         var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "nihil";
+//         return RateLimitPartition.GetFixedWindowLimiter(
+//             partitionKey: $"login: {ip}",
+//             factory: _=> new FixedWindowRateLimiterOptions
+//             {
+//                 PermitLimit=5,
+//                 Window=TimeSpan.FromMinutes(5),
+//                 QueueLimit=0,
+//                 AutoReplenishment=true
+//             }
+//         );
+//     });
+// });
+
 
 var app = builder.Build();
 
