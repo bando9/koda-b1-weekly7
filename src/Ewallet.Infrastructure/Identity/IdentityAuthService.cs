@@ -117,7 +117,7 @@ public sealed class IdentityAuthService(UserManager<AppUser> user, IAppDbContext
                 );
             }
 
-            var wallet = new Wallet(0,GenerateWalletNumber(),user.Id, WalletStatusEnum.ACTIVE);
+            var wallet = new Wallet(0,$"W-{GenerateWalletNumber()}",user.Id, WalletStatusEnum.ACTIVE);
 
             _db.Wallets.Add(wallet);
 
@@ -147,7 +147,6 @@ public sealed class IdentityAuthService(UserManager<AppUser> user, IAppDbContext
                 wallet.Id,
                 wallet.Balance
             );
-
             return new RegisterResult(RegisterStatus.Created,response,[]);
         }
         catch 

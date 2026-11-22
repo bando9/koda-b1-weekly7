@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using Ewallet.Infrastructure;
 using System.Threading.RateLimiting;
+using Ewallet.Infrastructure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,36 +23,36 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 builder.Services.AddInfrastructure(builder.Configuration);
 
-var connectionString = builder.Configuration.GetConnectionString("newEwallet") 
-    ?? throw new InvalidOperationException("ga bisa koneksi, belum konfigurasi");
+// var connectionString = builder.Configuration.GetConnectionString("newEwallet") 
+//     ?? throw new InvalidOperationException("ga bisa koneksi, belum konfigurasi");
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    options.UseSqlServer(connectionString)
-        .UseSeeding((context, _) =>
-        {
-            PaymentMethodSeedData.Seed(context);
-            UserWalletSeedData.Seed(context);
-            TransactionSeedData.Seed(context);
-        })
-        .UseAsyncSeeding(async (context, _, ct) =>
-        {
-            await PaymentMethodSeedData.SeedAsync(context, ct);
-            await UserWalletSeedData.SeedAsync(context, ct);
-            await TransactionSeedData.SeedAsync(context, ct);
-        });
-});
+// builder.Services.AddDbContext<AppDbContext>(options =>
+// {
+//         .UseSeeding((context, _) =>
+//         {
+//             PaymentMethodSeedData.Seed(context);
+//             // UserWalletSeedData.Seed(context);
+//             TransactionSeedData.Seed(context);
+//         })
+//         .UseAsyncSeeding(async (context, _, ct) =>
+//         {
+//             await PaymentMethodSeedData.SeedAsync(context, ct);
+//             // await UserWalletSeedData.SeedAsync(context, ct);
+//             await TransactionSeedData.SeedAsync(context, ct);
+//         });
+// });
 
-builder.Services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
 
 
 // *Service
 builder.Services.AddScoped<IPaymentMethodService, PaymentMethodService>();
 builder.Services.AddScoped<ITopUpService, TopUpService>();
-builder.Services.AddScoped<IUserService, UserService>();
+// builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+
+builder.Services.AddInfrastructure(builder.Configuration);
 
 
 // *RateLimiter
@@ -76,6 +77,21 @@ builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var dbContext = services.GetRequiredService<AppDbContext>();
+    var isDevOrTest = app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing");
+
+    await PaymentMethodSeedData.SeedAsync(dbContext);
+    await IdentitySeeder.SeedAsync(services, isDevOrTest);
+
+    if (isDevOrTest)
+    {
+        await TransactionSeedData.SeedAsync(dbContext);
+    }
+}
+
 app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
@@ -96,7 +112,6 @@ if (app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
-
 
 
 app.UseHttpsRedirection();

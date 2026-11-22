@@ -57,7 +57,7 @@ public sealed class TransferService(
             receiver.Credit(amount, now);
 
             var transaction = Transaction.CreateTransfer(
-                referenceNo: $"TRF-{GenerateWalletNumber()}",
+                referenceNo: $"TRF-{GenerateNumber()}",
                 senderWalletId: sender.Id,
                 receiverWalletId: receiver.Id,
                 amount: amount,
@@ -137,7 +137,7 @@ public sealed class TransferService(
         }
     }
 
-    private static string GenerateWalletNumber()
+    private static string GenerateNumber()
     {
         return string.Concat(Enumerable.Range(0, 10)
             .Select(_ => RandomNumberGenerator.GetInt32(0, 10)));

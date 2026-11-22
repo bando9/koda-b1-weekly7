@@ -1,5 +1,6 @@
 ﻿
 using Ewallet.Domain.Entities;
+using Ewallet.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Ewallet.Infrastructure.Persistence.Seeders;
@@ -13,8 +14,13 @@ public static class TransactionSeedData
         if (context.Set<Transaction>().Any(t => t.ReferenceNo == MarkerReferenceNo)) return;
 
         var wallets = context.Set<Wallet>()
-            .Include(w => w.User)
-            .ToDictionary(w => w.User.Username);
+        .Join(
+            context.Set<AppUser>(),
+            wallet => wallet.UserId,
+            user => user.Id,
+            (wallet, user) => new { Wallet = wallet, UserName = user.UserName! }
+        )
+        .ToDictionary(x => x.UserName, x => x.Wallet);
 
         var methods = context.Set<PaymentMethod>()
             .ToDictionary(pm => pm.Code);
@@ -54,8 +60,13 @@ public static class TransactionSeedData
         if (await context.Set<Transaction>().AnyAsync(t => t.ReferenceNo == MarkerReferenceNo, ct)) return;
 
         var wallets = await context.Set<Wallet>()
-            .Include(w => w.User)
-            .ToDictionaryAsync(w => w.User.Username, ct);
+        .Join(
+            context.Set<AppUser>(),
+            wallet => wallet.UserId,
+            user => user.Id,
+            (wallet, user) => new { Wallet = wallet, UserName = user.UserName! }
+        )
+        .ToDictionaryAsync(x => x.UserName, x => x.Wallet,ct);
 
         var methods = await context.Set<PaymentMethod>()
             .ToDictionaryAsync(pm => pm.Code, ct);
