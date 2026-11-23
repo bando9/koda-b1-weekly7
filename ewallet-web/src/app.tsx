@@ -7,6 +7,7 @@ import UseAuth from "./hooks/use-auth"
 import { getHomePath } from "./lib/auth-route"
 import SessionChecking from "./components/shared/session-checking"
 import CustomerDashboard from "./layouts/customer-dashboard"
+import AdminUserManagementPage from "./layouts/admin-dashboard"
 
 export function App() {
   return (
@@ -42,6 +43,15 @@ export function App() {
         <Route index element={<CustomerDashboard />} />
         {/* topup, transfer, activity, profile */}
       </Route>
+
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <AdminUserManagementPage onSelectUser={undefined} />
+          </ProtectedRoute>
+        }
+      />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
