@@ -1,19 +1,79 @@
-import { useState } from "react"
-import { Eye, EyeOff } from "lucide-react"
+import { useState, type FormEvent } from "react"
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Link, useLocation, useNavigate } from "react-router"
+import { ApiError, loginUser } from "@/service/auth-api"
+
+interface LocationState {
+  from?: { pathname: string }
+  registeredMessage?: string
+}
 
 export default function LoginPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  // const { setSession } = useAuth()
+
+  const state = location.state as LocationState | null
+
   const [identifier, setIdentifier] = useState("")
-  const [password, setPassword] = useState("••••••••••••")
+  const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
 
-  const handleSubmit = (e) => {
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{
+    identifier?: string
+    password?: string
+  }>({})
+
+  const validateForm = (): boolean => {
+    const errors: { identifier?: string; password?: string } = {}
+
+    if (!identifier.trim()) {
+      errors.identifier = "Email atau username wajib diisi."
+    }
+
+    if (!password) {
+      errors.password = "Password wajib diisi."
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    console.log({ identifier, password })
+    setErrorMessage(null)
+
+    if (!validateForm()) return
+
+    setIsLoading(true)
+    try {
+      const session = await loginUser({ identifier, password })
+
+      // setSession(session)
+
+      const defaultDestination =
+        session.user.role === "ADMIN" ? "/admin" : "/dashboard"
+      const destination = state?.from?.pathname || defaultDestination
+
+      navigate(destination, { replace: true })
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message)
+      } else if (err instanceof Error) {
+        setErrorMessage(err.message)
+      } else {
+        setErrorMessage("Terjadi kesalahan saat mencoba masuk.")
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
     <div className="flex min-h-screen flex-col font-sans antialiased lg:flex-row">
-      <div className="flex min-h-[300px] w-full flex-col justify-between bg-[#0F172A] px-8 py-10 text-white lg:min-h-screen lg:w-[46.8%] lg:px-14 lg:py-12">
+      <div className="flex min-h-75 w-full flex-col justify-between bg-[#0F172A] px-8 py-10 text-white lg:min-h-screen lg:w-[46.8%] lg:px-14 lg:py-12">
         <div className="flex items-center gap-3">
           <svg
             width="28"
@@ -63,7 +123,7 @@ export default function LoginPage() {
       </div>
 
       <div className="flex w-full items-center justify-center bg-white px-6 py-12 sm:px-12 lg:w-[53.2%]">
-        <div className="w-full max-w-[420px]">
+        <div className="w-full max-w-105">
           <div className="mb-8">
             <h2 className="mb-2 text-[28px] font-bold tracking-tight text-[#0F172A]">
               Masuk ke akunmu
@@ -73,7 +133,24 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          {state?.registeredMessage && !errorMessage && (
+            <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-medium text-emerald-800">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+              <span>{state.registeredMessage}</span>
+            </div>
+          )}
+
+          {errorMessage && (
+            <div
+              role="alert"
+              className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-medium text-red-700"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate className="space-y-5">
             <div>
               <label
                 htmlFor="identifier"
@@ -84,11 +161,30 @@ export default function LoginPage() {
               <input
                 id="identifier"
                 type="text"
+                autoComplete="username"
+                disabled={isLoading}
                 value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                onChange={(e) => {
+                  setIdentifier(e.target.value)
+                  if (fieldErrors.identifier) {
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      identifier: undefined,
+                    }))
+                  }
+                }}
                 placeholder="Masukkan email atau username"
-                className="h-12 w-full rounded-xl bg-[#F1F5F9] px-4 text-sm text-[#0F172A] placeholder-[#64748B] transition-all focus:bg-white focus:ring-2 focus:ring-[#1D61E7] focus:outline-none"
+                className={`h-12 w-full rounded-xl bg-[#F1F5F9] px-4 text-sm text-[#0F172A] placeholder-[#64748B] transition-all focus:bg-white focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                  fieldErrors.identifier
+                    ? "ring-2 ring-red-500 focus:ring-red-500"
+                    : "focus:ring-[#1D61E7]"
+                }`}
               />
+              {fieldErrors.identifier && (
+                <p className="mt-1.5 text-xs font-medium text-red-600">
+                  {fieldErrors.identifier}
+                </p>
+              )}
             </div>
 
             <div>
@@ -102,18 +198,35 @@ export default function LoginPage() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  disabled={isLoading}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (fieldErrors.password) {
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        password: undefined,
+                      }))
+                    }
+                  }}
                   placeholder="Masukkan password"
-                  className="h-12 w-full rounded-xl bg-[#F1F5F9] pr-11 pl-4 text-sm tracking-widest text-[#0F172A] placeholder-[#64748B] transition-all focus:bg-white focus:ring-2 focus:ring-[#1D61E7] focus:outline-none"
+                  className={`h-12 w-full rounded-xl bg-[#F1F5F9] pr-11 pl-4 text-sm text-[#0F172A] placeholder-[#64748B] transition-all focus:bg-white focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                    !showPassword && password ? "tracking-widest" : ""
+                  } ${
+                    fieldErrors.password
+                      ? "ring-2 ring-red-500 focus:ring-red-500"
+                      : "focus:ring-[#1D61E7]"
+                  }`}
                 />
                 <button
                   type="button"
+                  disabled={isLoading}
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={
                     showPassword ? "Sembunyikan password" : "Lihat password"
                   }
-                  className="absolute top-1/2 right-3.5 -translate-y-1/2 text-[#64748B] transition-colors hover:text-[#0F172A]"
+                  className="absolute top-1/2 right-3.5 -translate-y-1/2 text-[#64748B] transition-colors hover:text-[#0F172A] disabled:opacity-50"
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -122,14 +235,27 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p className="mt-1.5 text-xs font-medium text-red-600">
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
 
             <div className="pt-2">
               <button
                 type="submit"
-                className="h-12 w-full cursor-pointer rounded-xl bg-[#1D61E7] text-sm font-semibold text-white transition-all hover:bg-[#1652C8] active:scale-[0.99]"
+                disabled={isLoading}
+                className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#1D61E7] text-sm font-semibold text-white transition-all hover:bg-[#1652C8] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Masuk ke KodaWallet
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Memverifikasi...</span>
+                  </>
+                ) : (
+                  "Masuk ke KodaWallet"
+                )}
               </button>
             </div>
           </form>
@@ -137,9 +263,9 @@ export default function LoginPage() {
           <div className="mt-6 text-center">
             <p className="text-xs font-semibold text-[#1D61E7]">
               Belum punya akun?{" "}
-              <a href="#daftar" className="ml-0.5 hover:underline">
+              <Link to="/register" className="ml-0.5 hover:underline">
                 Daftar sekarang
-              </a>
+              </Link>
             </p>
           </div>
         </div>

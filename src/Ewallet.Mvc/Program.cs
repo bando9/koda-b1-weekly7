@@ -105,6 +105,21 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
+
+builder.Services.AddCors(option =>
+{
+    option.AddPolicy("ReactClient", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
+    });
+});
+
 
 // *JWT
 var jwtOption = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
@@ -198,9 +213,10 @@ if (app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-
 app.UseHttpsRedirection();
 app.UseRouting();
+
+app.UseCors("ReactClient");
 
 
 app.UseAuthorization();
