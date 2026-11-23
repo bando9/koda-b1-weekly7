@@ -482,3 +482,5 @@ E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\bin\Debug\ne
 E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\bin\Debug\net10.0\Ewallet.Infrastructure.pdb
 E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\bin\Debug\net10.0\Ewallet.Domain.pdb
 E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\bin\Debug\net10.0\Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
+E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\bin\Debug\net10.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
+E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Mvc\bin\Debug\net10.0\Microsoft.Bcl.Cryptography.dll

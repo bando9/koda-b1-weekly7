@@ -9,6 +9,9 @@ using Ewallet.Infrastructure;
 using System.Threading.RateLimiting;
 using Ewallet.Infrastructure.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -101,6 +104,60 @@ builder.Services.AddRateLimiter(options =>
         );
     });
 });
+
+
+// *JWT
+var jwtOption = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
+        ?? throw new InvalidOperationException("Konfigurasi JWT blm dilakukan");
+
+if(string.IsNullOrWhiteSpace(jwtOption.Issuer))
+    throw new InvalidOperationException("Jwt Issuer blm tersedia");
+if(string.IsNullOrWhiteSpace(jwtOption.Audience))
+    throw new InvalidOperationException("Jwt Audience blm tersedia");
+if(jwtOption.AccessTokenMinutes is <1 or >60)
+    throw new InvalidOperationException("Jwt Access Token Minutes hanya antara 1-60 detik");
+
+byte[] signingKeyBytes;
+try
+{
+    signingKeyBytes = Convert.FromBase64String(jwtOption.SigningKeyBase64);
+}
+catch (FormatException e)
+{
+    throw new InvalidOperationException("Jwt SigningKeyBase64 tidak menggunakan standar Base 64",e);
+}
+
+if(signingKeyBytes.Length <32) throw new InvalidOperationException("Jwt signing key minimal 32 byte");
+
+
+// *Authenticatoin
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+{
+   options.MapInboundClaims = false;
+   options.IncludeErrorDetails = false;
+   options.TokenValidationParameters = new TokenValidationParameters
+   {
+       ValidateIssuer=true,
+       ValidIssuer=jwtOption.Issuer,
+       ValidateAudience=true,
+       ValidAudience=jwtOption.Audience,
+       ValidateIssuerSigningKey=true,
+       IssuerSigningKey=new SymmetricSecurityKey(signingKeyBytes),
+       RequireSignedTokens = true,
+       ValidAlgorithms = [
+           SecurityAlgorithms.HmacSha256
+       ],
+       ValidateLifetime = true,
+       RequireExpirationTime=true,
+       ClockSkew = TimeSpan.Zero,
+       NameClaimType =JwtRegisteredClaimNames.Sub,
+       RoleClaimType = "role"
+   }; 
+});
+
+// *Authorization
+builder.Services.AddAuthorization();
+
 
 
 var app = builder.Build();

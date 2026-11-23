@@ -18,26 +18,35 @@ public sealed class IdentityAuthService(UserManager<AppUser> user, IAppDbContext
         ct.ThrowIfCancellationRequested();
 
         var identifier = request.Identifier.Trim();
-
         var user = identifier.Contains('@')
                     ? await _user.FindByEmailAsync(identifier)
                     : await _user.FindByNameAsync(identifier);
 
-        if(user is null) return new LoginResult(false,null!, "Username / Email atau Password salah");
+        if(user is null) return LoginResult.Failure("Username / Email atau Password salah");
 
-        if(user.Status != UserStatusEnum.ACTIVE) return new LoginResult(false,null!, "Akunmu sedang dinonaktifkan (suspend)");
+        if(user.Status != UserStatusEnum.ACTIVE) return LoginResult.Failure("Akunmu sedang dinonaktifkan (suspend)");
 
         var passwordValid = await _user.CheckPasswordAsync(user,request.Password);
-        if(!passwordValid) return new LoginResult(false,null!, "Username / Email atau Password salah");
+        if(!passwordValid) return LoginResult.Failure("Username / Email atau Password salah");
 
         var roles = await _user.GetRolesAsync(user);
         var primaryRole = roles.FirstOrDefault() ?? "CUSTOMER";
 
         var wallet = await _db.Wallets.AsNoTracking().FirstOrDefaultAsync(w => w.UserId == user.Id,ct);
 
-        var response = new AuthUserResponse(user.Id,user.FullName,user.UserName!,user.Email!,user.PhoneNumber ?? string.Empty,primaryRole,wallet?.Id ?? 0,wallet?.Balance ?? 0);
+        var response = new AuthUserResponse(
+            user.Id,
+            user.FullName,
+            user.UserName!,
+            user.Email!,
+            user.PhoneNumber ?? string.Empty,
+            primaryRole,
+            wallet?.Id ?? 0,
+            wallet?.Balance ?? 0);
 
-        return new LoginResult(true,response,null);
+        // var (accessToken,expiredAtUtc) = _jwtTokenGenerator
+
+        return new LoginResult(true, response, null,null,null,null);
     }
 
     public async Task<RegisterResult> RegisterAsync(RegisterRequest request, CancellationToken ct)

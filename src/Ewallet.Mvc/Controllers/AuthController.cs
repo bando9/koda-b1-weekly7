@@ -1,5 +1,9 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Ewallet.Application.DTOs;
 using Ewallet.Application.Services;
+using KodaStore.Application.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -8,13 +12,21 @@ namespace Ewallet.Mvc.Controllers;
 [ApiController]
 [Route("api/v1/auth")]
 
-public sealed class AuthController(IAuthService authService) : ControllerBase
+public sealed class AuthController(
+    IAuthService authService,
+    IWebHostEnvironment environment,
+    IConfiguration configuration,
+    IRefreshTokenService refreshTokenService
+) : ControllerBase
 {
-    private readonly IAuthService _authService=authService;
+     private const string RefreshCookieName = "ewallet_refresh";
+    private readonly IAuthService _authService=authService; 
+    private readonly IRefreshTokenService _refreshTokenService = refreshTokenService;
+    private readonly IWebHostEnvironment _environtment = environment;
+    private readonly IConfiguration _configuration = configuration;
 
     [HttpPost("register")]
     [EnableRateLimiting("auth")]
-
     [ProducesResponseType(typeof(AuthUserResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
@@ -30,25 +42,125 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
             RegisterStatus.DuplicateEmail or
             RegisterStatus.DuplicateUserName or
             RegisterStatus.DuplicatePhoneNumber => Conflict(new{errors = result.Errors}),
+
             _ => BadRequest(new{errors=result.Errors})
         };
     }
 
+    [AllowAnonymous]
     [HttpPost("login")]
     [EnableRateLimiting("auth")]
-    [ProducesResponseType(typeof(AuthUserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
+    public async Task<ActionResult<LoginResult>> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
         var result = await _authService.LoginAsync(request, ct);
 
-        if (!result.Succedded)
+        if (!result.Succedded || result.User is null)
         {
-            return Unauthorized(new { message=result.ErrorMessage});
+            return Unauthorized(new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Invalid access",
+                Detail = "email atau password salah" 
+            });
         }
 
-        return Ok(result.User);
+        var session = await _refreshTokenService.CreateSessionAsync(result.User,ct);
+
+        WriteRefreshCookie(session.RawRefreshToken,session.RefreshExpiredAtUtc);
+
+        Response.Headers.CacheControl = "no-store";
+
+        var response = new LoginResponse(
+                            Message: "Akun berhasil diverifikasi", 
+                            User: session.User, 
+                            AccessToken: session.AccessToken.AccessToken,
+                            TokenType: "Bearer",
+                            ExpiresAtUtc: session.AccessToken.ExpiredAtUtc);
+
+        return Ok(response);
+    }
+
+
+    [Authorize]
+    [HttpGet("me")]
+    [ProducesResponseType(typeof(CurrentUserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status401Unauthorized)]
+    public ActionResult<CurrentUserResponse> Me()
+    {
+        var subject =  User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+        if(!long.TryParse(subject, out var userId) || userId <= 0 )
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Invalid user data"
+            });
+        }
+
+        var email = User.FindFirst(JwtRegisteredClaimNames.Email)?.Value ?? string.Empty;
+        var roles = User.FindAll("role").Select(claim => claim.Value).ToArray();
+        // var email = User.FindFirstValue(ClaimTypes.Email)
+        //         ?? User.FindFirstValue(JwtRegisteredClaimNames.Email)
+        //         ?? string.Empty;
+
+        // var roles = User.FindAll(ClaimTypes.Role)
+        //     .Concat(User.FindAll("role"))
+        //     .Select(claim => claim.Value)
+        //     .Distinct()
+        //     .ToArray();
+
+        var response = new CurrentUserResponse(userId, email,roles); 
+
+        return Ok(response);
+    }
+
+
+
+
+
+    // *Helper
+    private void WriteRefreshCookie(string rawRefreshToken,DateTimeOffset expiresAtUtc)
+    {
+        Response.Cookies.Append(RefreshCookieName,rawRefreshToken,new CookieOptions
+        {
+            HttpOnly=true, // menyetujui
+            Secure= !_environtment.IsDevelopment() || Request.IsHttps, // berjalan di dev/https
+            SameSite = SameSiteMode.Lax,
+            Path = "/api/v1/auth",
+            Expires = expiresAtUtc,
+            IsEssential = true // digunakan untuk cookie, untuk kebutuhan auth-nya
+        });
+    }
+
+    private void DeleteRefreshCookie()
+    {
+        Response.Cookies.Delete(RefreshCookieName,new CookieOptions
+        {
+            HttpOnly=true,
+            Secure= !_environtment.IsDevelopment() || Request.IsHttps,
+            SameSite = SameSiteMode.Lax,
+            Path = "/api/v1/auth",
+        });
+    }
+
+    private bool IsTrustedOrigin()
+    {
+        var origin = Request.Headers.Origin.ToString();
+
+        if (string.IsNullOrWhiteSpace(origin))
+        {
+            return false;
+        }
+
+        var allowedOrigins = _configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
+        return allowedOrigins.Contains(origin,StringComparer.Ordinal);
     }
 }

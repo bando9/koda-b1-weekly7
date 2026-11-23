@@ -16,6 +16,14 @@ public sealed record LoginRequest(
     [Required] string Password
 );
 
+public sealed record LoginResponse(
+    string Message,
+    AuthUserResponse User,
+    string AccessToken,
+    string TokenType,
+    DateTimeOffset ExpiresAtUtc
+);
+
 public sealed record AuthUserResponse(
     long Id,
     string FullName,
@@ -45,5 +53,14 @@ public sealed record RegisterResult(
 public sealed record LoginResult(
     bool Succedded,
     AuthUserResponse User,
-    string? ErrorMessage
-);
+    string? ErrorMessage,
+    string? AccessToken,
+    string? TokenType,
+    DateTimeOffset? ExpiresAtUtc
+)
+{
+    public static LoginResult Failure(string errorMessage) => new(false,null!,errorMessage,null,null,null);
+
+    public static LoginResult Success(AuthUserResponse user, string accessToken, DateTimeOffset expiresAtUtc, string tokenType = "Bearer") => new(true,user,null,accessToken,tokenType,expiresAtUtc);
+};
+

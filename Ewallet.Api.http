@@ -6,3 +6,39 @@ Accept: application/json
 ### Get User All
 GET {{baseUrl}}/api/v1/users
 Accept: application/json
+
+
+# ==== Auth
+
+### Login Customer
+# @name loginCustomer
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+    "identifier": "dimas.wijaya",
+    "password": "Customer#123"
+}
+
+### ROLE CUSTOMER DARI JWT
+GET {{baseUrl}}/api/v1/auth/me
+Accept: application/json
+Authorization: Bearer {{loginCustomer.response.body.$.accessToken}}
+
+
+### Login Admin
+# @name loginAdmin
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+    "identifier": "admin",
+    "password": "Admin#12345"
+}
+
+### TEST 2 — PERIKSA ROLE CUSTOMER DARI JWT
+GET {{baseUrl}}/api/v1/auth/me
+Accept: application/json
+Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}

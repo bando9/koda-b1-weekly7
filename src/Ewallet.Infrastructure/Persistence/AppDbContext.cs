@@ -19,6 +19,8 @@ public sealed class AppDbContext : IdentityDbContext<AppUser, IdentityRole<long>
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<Wallet> Wallets => Set<Wallet>();
     public DbSet<WalletMutation> WalletMutations => Set<WalletMutation>();
+    public DbSet<RefreshToken> RefreshToken => Set<RefreshToken>();
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -35,6 +37,41 @@ public sealed class AppDbContext : IdentityDbContext<AppUser, IdentityRole<long>
 
             entity.Property(u => u.PhoneNumber).HasMaxLength(20).IsRequired();
             entity.HasIndex(u => u.PhoneNumber).IsUnique();
+
+        });
+
+
+        // *Refresh Token
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.ToTable("RefreshTokens", "dbo");
+
+            entity.HasKey(token => token.Id);
+            entity.Property(token => token.Id)
+                    .ValueGeneratedNever();
+            entity.Property(token => token.TokenHash)
+                    .HasMaxLength(64).IsUnicode(false).IsRequired();
+
+            entity.HasIndex(token => new
+            {
+                token.UserId,
+                token.FamilyId,
+            });
+            entity.HasIndex(token =>token.FamilyId);
+
+            entity.HasOne(token => token.User)
+                    .WithMany()
+                    .HasForeignKey(token=>token.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(token => token.CreatedAtUtc)
+                    .HasColumnType("datetimeoffset");     
+            entity.Property(token => token.ExpiredAtUtc)
+                    .HasColumnType("datetimeoffset");     
+            entity.Property(token => token.UsedAtUtc)
+                    .HasColumnType("datetimeoffset");     
+            entity.Property(token => token.RevokedAtUtc)
+                    .HasColumnType("datetimeoffset");
 
         });
     
