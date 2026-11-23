@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from "react"
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react"
 import { Link, useLocation, useNavigate } from "react-router"
-import { ApiError, loginUser } from "@/service/auth-api"
+import { ApiError } from "@/service/auth-api"
+import UseAuth from "@/hooks/use-auth"
+import { resolveDestination } from "@/lib/auth-route"
 
 interface LocationState {
   from?: { pathname: string }
@@ -11,7 +13,7 @@ interface LocationState {
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  // const { setSession } = useAuth()
+  const { login } = UseAuth()
 
   const state = location.state as LocationState | null
 
@@ -49,15 +51,10 @@ export default function LoginPage() {
 
     setIsLoading(true)
     try {
-      const session = await loginUser({ identifier, password })
-
-      // setSession(session)
-
-      const defaultDestination =
-        session.user.role === "ADMIN" ? "/admin" : "/dashboard"
-      const destination = state?.from?.pathname || defaultDestination
-
-      navigate(destination, { replace: true })
+      const session = await login({ identifier, password })
+      navigate(resolveDestination(session.user.role, state?.from?.pathname), {
+        replace: true,
+      })
     } catch (err) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message)
