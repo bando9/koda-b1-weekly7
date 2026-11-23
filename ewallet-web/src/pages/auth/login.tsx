@@ -1,9 +1,14 @@
 import { useState, type FormEvent } from "react"
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react"
 import { Link, useLocation, useNavigate } from "react-router"
-import { ApiError } from "@/service/auth-api"
+
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import UseAuth from "@/hooks/use-auth"
 import { resolveDestination } from "@/lib/auth-route"
+import { ApiError } from "@/service/auth-api"
 
 interface LocationState {
   from?: { pathname: string }
@@ -70,92 +75,69 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col font-sans antialiased lg:flex-row">
-      <div className="flex min-h-75 w-full flex-col justify-between bg-[#0F172A] px-8 py-10 text-white lg:min-h-screen lg:w-[46.8%] lg:px-14 lg:py-12">
-        <div className="flex items-center gap-3">
-          <svg
-            width="28"
-            height="28"
-            viewBox="0 0 28 28"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="shrink-0 text-white"
-          >
-            <rect
-              x="14"
-              y="2.12132"
-              width="16.8"
-              height="16.8"
-              rx="1.5"
-              transform="rotate(45 14 2.12132)"
-              stroke="currentColor"
-              strokeWidth="2.2"
-            />
-            <rect
-              x="14"
-              y="9.75736"
-              width="6"
-              height="6"
-              rx="0.5"
-              transform="rotate(45 14 9.75736)"
-              fill="currentColor"
-            />
-          </svg>
-          <span className="text-[22px] font-bold tracking-tight">
-            KodaWallet
-          </span>
+      <div className="flex min-h-72 w-full flex-col justify-between bg-[#135D54] px-8 py-10 text-white lg:min-h-screen lg:w-[41.67%] lg:px-14 lg:py-12">
+        <div>
+          <span className="text-xl font-bold tracking-tight">koda wallet</span>
         </div>
 
-        <div className="my-auto max-w-md py-12 lg:py-0">
-          <h1 className="mb-4 text-3xl leading-[1.2] font-bold tracking-tight sm:text-4xl">
-            Dompet digital untuk
+        <div className="my-auto max-w-sm py-12 lg:py-0">
+          <h1 className="mb-4 text-4xl leading-[1.18] font-bold tracking-tight sm:text-[42px]">
+            Uangmu,
             <br />
-            aktivitas sehari-hari.
+            lebih terarah.
           </h1>
-          <p className="text-base font-normal text-[#CBD5E1]">
-            Mudah, aman, dan transparan.
+          <p className="text-[15px] leading-relaxed font-normal text-white/85">
+            Kelola saldo, kirim uang, dan lihat setiap transaksi dalam satu
+            tempat.
           </p>
         </div>
 
-        <div className="hidden h-8 lg:block" />
+        <div className="pt-4">
+          <hr className="border-t border-white/40" />
+        </div>
       </div>
 
-      <div className="flex w-full items-center justify-center bg-white px-6 py-12 sm:px-12 lg:w-[53.2%]">
+      <div className="flex w-full flex-1 items-center justify-center bg-white px-6 py-12 sm:px-12 lg:w-[58.33%]">
         <div className="w-full max-w-105">
-          <div className="mb-8">
-            <h2 className="mb-2 text-[28px] font-bold tracking-tight text-[#0F172A]">
-              Masuk ke akunmu
+          <div className="mb-9">
+            <h2 className="mb-1.5 text-[28px] font-bold tracking-tight text-[#1E293B]">
+              Selamat datang kembali
             </h2>
             <p className="text-sm text-[#64748B]">
-              Selamat datang kembali di KodaWallet.
+              Masuk untuk melanjutkan ke dompetmu.
             </p>
           </div>
 
           {state?.registeredMessage && !errorMessage && (
-            <div className="mb-5 flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 p-3.5 text-xs font-medium text-emerald-800">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-              <span>{state.registeredMessage}</span>
-            </div>
+            <Alert className="mb-6 rounded-xl border-emerald-200 bg-emerald-50 text-emerald-800">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <AlertDescription className="text-xs font-medium">
+                {state.registeredMessage}
+              </AlertDescription>
+            </Alert>
           )}
 
           {errorMessage && (
-            <div
-              role="alert"
-              className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 p-3.5 text-xs font-medium text-red-700"
+            <Alert
+              variant="destructive"
+              className="mb-6 rounded-xl border-red-200 bg-red-50 text-red-700"
             >
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
-              <span>{errorMessage}</span>
-            </div>
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-xs font-medium">
+                {errorMessage}
+              </AlertDescription>
+            </Alert>
           )}
 
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
-            <div>
-              <label
+            <div className="space-y-2">
+              <Label
                 htmlFor="identifier"
-                className="mb-2 block text-xs font-semibold text-[#475569]"
+                className="text-xs font-medium text-[#64748B]"
               >
-                Email atau Username
-              </label>
-              <input
+                Email atau username
+              </Label>
+              <Input
                 id="identifier"
                 type="text"
                 autoComplete="username"
@@ -170,29 +152,29 @@ export default function LoginPage() {
                     }))
                   }
                 }}
-                placeholder="Masukkan email atau username"
-                className={`h-12 w-full rounded-xl bg-[#F1F5F9] px-4 text-sm text-[#0F172A] placeholder-[#64748B] transition-all focus:bg-white focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                placeholder="nadia@example.com"
+                className={`h-11 rounded-lg border-transparent bg-transparent px-3 text-sm text-[#0F172A] shadow-none transition-colors placeholder:text-[#94A3B8] focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54] ${
                   fieldErrors.identifier
-                    ? "ring-2 ring-red-500 focus:ring-red-500"
-                    : "focus:ring-[#1D61E7]"
+                    ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500"
+                    : "hover:bg-slate-50/80"
                 }`}
               />
               {fieldErrors.identifier && (
-                <p className="mt-1.5 text-xs font-medium text-red-600">
+                <p className="text-xs font-medium text-red-600">
                   {fieldErrors.identifier}
                 </p>
               )}
             </div>
 
-            <div>
-              <label
+            <div className="space-y-2">
+              <Label
                 htmlFor="password"
-                className="mb-2 block text-xs font-semibold text-[#475569]"
+                className="text-xs font-medium text-[#64748B]"
               >
                 Password
-              </label>
+              </Label>
               <div className="relative">
-                <input
+                <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
@@ -207,13 +189,13 @@ export default function LoginPage() {
                       }))
                     }
                   }}
-                  placeholder="Masukkan password"
-                  className={`h-12 w-full rounded-xl bg-[#F1F5F9] pr-11 pl-4 text-sm text-[#0F172A] placeholder-[#64748B] transition-all focus:bg-white focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                  placeholder="••••••••••••"
+                  className={`h-11 rounded-lg border-transparent bg-transparent pr-10 pl-3 text-sm text-[#0F172A] shadow-none transition-colors placeholder:text-[#0F172A] focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54] ${
                     !showPassword && password ? "tracking-widest" : ""
                   } ${
                     fieldErrors.password
-                      ? "ring-2 ring-red-500 focus:ring-red-500"
-                      : "focus:ring-[#1D61E7]"
+                      ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500"
+                      : "hover:bg-slate-50/80"
                   }`}
                 />
                 <button
@@ -223,7 +205,7 @@ export default function LoginPage() {
                   aria-label={
                     showPassword ? "Sembunyikan password" : "Lihat password"
                   }
-                  className="absolute top-1/2 right-3.5 -translate-y-1/2 text-[#64748B] transition-colors hover:text-[#0F172A] disabled:opacity-50"
+                  className="absolute top-1/2 right-3 -translate-y-1/2 text-[#64748B] transition-colors hover:text-[#0F172A] disabled:opacity-50"
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -233,34 +215,46 @@ export default function LoginPage() {
                 </button>
               </div>
               {fieldErrors.password && (
-                <p className="mt-1.5 text-xs font-medium text-red-600">
+                <p className="text-xs font-medium text-red-600">
                   {fieldErrors.password}
                 </p>
               )}
+
+              <div className="flex justify-end pt-1">
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-semibold text-[#135D54] hover:underline"
+                >
+                  Lupa kata sandi?
+                </Link>
+              </div>
             </div>
 
             <div className="pt-2">
-              <button
+              <Button
                 type="submit"
                 disabled={isLoading}
-                className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#1D61E7] text-sm font-semibold text-white transition-all hover:bg-[#1652C8] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
+                className="h-11 w-full cursor-pointer justify-start rounded-lg bg-[#135D54] px-5 text-sm font-medium text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99] disabled:opacity-70"
               >
                 {isLoading ? (
-                  <>
+                  <span className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Memverifikasi...</span>
-                  </>
+                  </span>
                 ) : (
-                  "Masuk ke KodaWallet"
+                  "Masuk ke akun"
                 )}
-              </button>
+              </Button>
             </div>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-xs font-semibold text-[#1D61E7]">
-              Belum punya akun?{" "}
-              <Link to="/register" className="ml-0.5 hover:underline">
+          <div className="mt-7 text-center">
+            <p className="text-xs text-[#64748B]">
+              Belum memiliki akun?{" "}
+              <Link
+                to="/register"
+                className="ml-2 font-semibold text-[#135D54] hover:underline"
+              >
                 Daftar sekarang
               </Link>
             </p>
