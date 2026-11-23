@@ -8,6 +8,7 @@ using Scalar.AspNetCore;
 using Ewallet.Infrastructure;
 using System.Threading.RateLimiting;
 using Ewallet.Infrastructure.Identity;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,23 +57,50 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 
 // *RateLimiter
-// builder.Services.AddRateLimiter(options =>
-// {
-//     options.AddPolicy("auth", ctx =>
-//     {
-//         var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "nihil";
-//         return RateLimitPartition.GetFixedWindowLimiter(
-//             partitionKey: $"login: {ip}",
-//             factory: _=> new FixedWindowRateLimiterOptions
-//             {
-//                 PermitLimit=5,
-//                 Window=TimeSpan.FromMinutes(5),
-//                 QueueLimit=0,
-//                 AutoReplenishment=true
-//             }
-//         );
-//     });
-// });
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType="application/problem+json";
+
+        int? retryAfterSeconds=null;
+        if(context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            retryAfterSeconds=(int)Math.Ceiling(retryAfter.TotalSeconds);
+            context.HttpContext.Response.Headers.RetryAfter=retryAfterSeconds.ToString();
+        }
+
+        var problemDetails = new ProblemDetails
+        {
+            Status= StatusCodes.Status429TooManyRequests,
+            Title="Too Many Requests",
+            Detail = retryAfterSeconds.HasValue
+                        ? $"Terlalu banyak percobaan, silahkan coba lagi dalam {retryAfterSeconds} detik."
+                        : "Terlalu banyak percobaan, silahkan coba lagi.",
+            Instance = context.HttpContext.Request.Path
+        };
+
+        await context.HttpContext.Response.WriteAsJsonAsync(problemDetails,cancellationToken);        
+    };
+
+    options.AddPolicy("auth", ctx =>
+    {
+        var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "nihil";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"login: {ip}",
+            factory: _=> new FixedWindowRateLimiterOptions
+            {
+                PermitLimit=5,
+                Window=TimeSpan.FromMinutes(1),
+                QueueLimit=0,
+                AutoReplenishment=true
+            }
+        );
+    });
+});
 
 
 var app = builder.Build();
@@ -117,7 +145,10 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 
+
 app.UseAuthorization();
+
+app.UseRateLimiter();
 
 app.MapStaticAssets();
 

@@ -20,6 +20,7 @@ Select * FROM dbo.WalletMutations;
 Select * FROM dbo.Transactions;
 Select * FROM dbo.PaymentMethods;
 Select * FROM dbo.Wallets;
+
 Select * FROM dbo.AspNetRoleClaims; 
 Select * FROM dbo.AspNetRoles; 
 Select * FROM dbo.AspNetUserClaims; 
