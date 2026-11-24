@@ -11,35 +11,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { dashboardService, type WalletDto } from "@/service/dashboard-service"
-import { topUpService } from "@/service/topup-service"
+import { topUpService, type PaymentMethodDto } from "@/service/topup-service"
 import { formatRupiah, formatToRupiah } from "@/utils"
 
 interface CustomerLayoutContext {
   displayName: string
   initials: string
 }
-
-interface PaymentMethodOption {
-  id: number // Sesuai ID di tabel PaymentMethods
-  code: string
-  title: string
-  description: string
-}
-
-const PAYMENT_METHODS: PaymentMethodOption[] = [
-  {
-    id: 2,
-    code: "VA_MANDIRI",
-    title: "Mandiri Virtual Account",
-    description: "Transfer bank (simulasi)",
-  },
-  {
-    id: 3,
-    code: "QRIS",
-    title: "QRIS Instant",
-    description: "Pembayaran QRIS (simulasi)",
-  },
-]
 
 export default function TopUpPage() {
   const navigate = useNavigate()
@@ -48,27 +26,55 @@ export default function TopUpPage() {
   const initials = context?.initials ?? "U"
 
   const [wallet, setWallet] = useState<WalletDto | null>(null)
-  const [isLoadingWallet, setIsLoadingWallet] = useState<boolean>(true)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodDto[]>([])
+  const [selectedMethodId, setSelectedMethodId] = useState<number | null>(null)
+
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true)
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
   const [rawAmount, setRawAmount] = useState<string>("")
-  const [selectedMethodId, setSelectedMethodId] = useState<number>(2)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
+  // 1. Ambil Wallet & Daftar Payment Methods dari Backend
   useEffect(() => {
     let isCancelled = false
 
-    dashboardService
-      .getMyWallet()
-      .then((res) => {
-        if (!isCancelled) setWallet(res)
-      })
-      .catch(() => {
-        // Fallback jika gagal memuat wallet
-      })
-      .finally(() => {
-        if (!isCancelled) setIsLoadingWallet(false)
-      })
+    async function loadInitialData() {
+      try {
+        const [walletRes, methodsRes] = await Promise.all([
+          dashboardService.getMyWallet(),
+          topUpService.getPaymentMethods(),
+        ])
+
+        if (!isCancelled) {
+          setWallet(walletRes)
+
+          const activeMethods = Array.isArray(methodsRes)
+            ? methodsRes.filter((m) => m.isActive !== false)
+            : []
+
+          setPaymentMethods(activeMethods)
+
+          if (activeMethods.length > 0) {
+            setSelectedMethodId(activeMethods[0].id)
+          }
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setErrorMessage(
+            err instanceof Error
+              ? err.message
+              : "Gagal memuat data wallet dan metode pembayaran."
+          )
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsInitialLoading(false)
+        }
+      }
+    }
+
+    loadInitialData()
 
     return () => {
       isCancelled = true
@@ -85,6 +91,7 @@ export default function TopUpPage() {
     if (errorMessage) setErrorMessage(null)
   }
 
+  // 2. Submit Top Up menggunakan selectedMethodId dari database
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setErrorMessage(null)
@@ -94,21 +101,22 @@ export default function TopUpPage() {
       return
     }
 
+    const chosenMethod = paymentMethods.find((m) => m.id === selectedMethodId)
+    if (!chosenMethod) {
+      setErrorMessage("Silakan pilih metode pembayaran terlebih dahulu.")
+      return
+    }
+
     try {
       setIsSubmitting(true)
 
-      // 1. Panggil backend POST /api/v1/topups -> menghasilkan TopUpRequest berstatus PENDING
       const createdTopUp = await topUpService.createTopUp({
-        paymentMethodId: selectedMethodId,
+        paymentMethodId: chosenMethod.id,
         amount: numericAmount,
       })
 
-      const selectedOption = PAYMENT_METHODS.find(
-        (m) => m.id === selectedMethodId
-      )
-
-      // 2. Arahkan ke halaman QRIS atau Konfirmasi Bank dengan data asli dari backend
-      if (selectedMethodId === 3) {
+      // Arahkan ke halaman QRIS jika code metode adalah QRIS
+      if (chosenMethod.code.toUpperCase() === "QRIS") {
         navigate("/dashboard/top-up/qris", {
           state: {
             topUpRequestId: createdTopUp.topUpRequestId,
@@ -121,6 +129,7 @@ export default function TopUpPage() {
         return
       }
 
+      // Selain QRIS (Virtual Account / Retail), arahkan ke halaman konfirmasi
       navigate("/dashboard/top-up/confirm", {
         state: {
           topUpRequestId: createdTopUp.topUpRequestId,
@@ -128,7 +137,7 @@ export default function TopUpPage() {
           providerReference: createdTopUp.providerReference,
           recipientName: displayName,
           amount: createdTopUp.amount,
-          paymentMethod: selectedOption?.title ?? "Mandiri Virtual Account",
+          paymentMethod: chosenMethod.name,
           currentBalance,
         },
       })
@@ -219,42 +228,65 @@ export default function TopUpPage() {
                 </div>
               </div>
 
+              {/* 3. Render Metode Pembayaran Dinamis dari Backend */}
               <div className="space-y-3">
                 <Label className="block text-xs font-semibold text-[#64748B]">
                   Metode pembayaran
                 </Label>
-                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-                  {PAYMENT_METHODS.map((method) => {
-                    const isSelected = selectedMethodId === method.id
-                    return (
-                      <button
-                        key={method.id}
-                        type="button"
-                        disabled={isSubmitting}
-                        onClick={() => setSelectedMethodId(method.id)}
-                        className={cn(
-                          "cursor-pointer rounded-2xl p-5 text-left transition-all focus-visible:ring-2 focus-visible:ring-[#135D54] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60",
-                          isSelected
-                            ? "bg-[#EDF5F3]"
-                            : "bg-transparent hover:bg-slate-50"
-                        )}
-                      >
-                        <p className="text-sm font-bold text-[#1E293B]">
-                          {method.title}
-                        </p>
-                        <p className="mt-1 text-xs text-[#64748B]">
-                          {method.description}
-                        </p>
-                      </button>
-                    )
-                  })}
-                </div>
+
+                {isInitialLoading ? (
+                  <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                    {[1, 2, 3, 4].map((n) => (
+                      <div
+                        key={n}
+                        className="h-20 animate-pulse rounded-2xl bg-slate-100"
+                      />
+                    ))}
+                  </div>
+                ) : paymentMethods.length === 0 ? (
+                  <p className="text-xs text-[#64748B]">
+                    Belum ada metode pembayaran yang tersedia.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                    {paymentMethods.map((method) => {
+                      const isSelected = selectedMethodId === method.id
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => setSelectedMethodId(method.id)}
+                          className={cn(
+                            "cursor-pointer rounded-2xl p-5 text-left transition-all focus-visible:ring-2 focus-visible:ring-[#135D54] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60",
+                            isSelected
+                              ? "bg-[#EDF5F3]"
+                              : "bg-transparent hover:bg-slate-50"
+                          )}
+                        >
+                          <p className="text-sm font-bold text-[#1E293B]">
+                            {method.name}
+                          </p>
+                          <p className="mt-1 text-xs text-[#64748B]">
+                            {method.provider
+                              ? `${method.provider} · Simulasi`
+                              : "Pembayaran simulasi"}
+                          </p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="pt-6">
                 <Button
                   type="submit"
-                  disabled={isSubmitting || isLoadingWallet}
+                  disabled={
+                    isSubmitting ||
+                    isInitialLoading ||
+                    paymentMethods.length === 0
+                  }
                   className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#135D54] px-5 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99] disabled:opacity-70"
                 >
                   {isSubmitting ? (
@@ -279,7 +311,7 @@ export default function TopUpPage() {
 
             <div className="border-b border-slate-100 pb-6">
               <p className="mb-2 text-xs text-[#64748B]">Saldo saat ini</p>
-              {isLoadingWallet ? (
+              {isInitialLoading ? (
                 <div className="h-9 w-40 animate-pulse rounded-lg bg-slate-100" />
               ) : (
                 <p className="text-[28px] font-bold tracking-tight text-[#1E293B]">
@@ -291,7 +323,7 @@ export default function TopUpPage() {
             <div className="flex items-center justify-between pt-5">
               <span className="text-xs text-[#64748B]">Status dompet</span>
               <Badge className="rounded-full bg-[#E6F4EE] px-3 py-1 text-[10px] font-bold tracking-wider text-[#135D54] uppercase shadow-none hover:bg-[#E6F4EE]">
-                {isLoadingWallet
+                {isInitialLoading
                   ? "MEMUAT"
                   : isWalletActive
                     ? "AKTIF"

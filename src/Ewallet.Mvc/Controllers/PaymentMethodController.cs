@@ -1,5 +1,6 @@
 ﻿using Ewallet.Application.DTOs;
 using Ewallet.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ewallet.Mvc.Controllers;
@@ -10,7 +11,7 @@ namespace Ewallet.Mvc.Controllers;
 public sealed class PaymentMethodController(IPaymentMethodService service) : ControllerBase
 {
     
-    [HttpGet]
+    [HttpGet, AllowAnonymous]
     [ProducesResponseType(typeof(IReadOnlyList<PaymentMethodResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetActive(CancellationToken ct) => Ok(await service.GetActiveAsync(ct));
 }

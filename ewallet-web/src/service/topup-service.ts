@@ -1,6 +1,14 @@
 // src/services/topUpService.ts
 import { apiFetch } from "@/lib/api"
 
+export interface PaymentMethodDto {
+  id: number
+  code: string
+  name: string
+  provider?: string | null
+  isActive: boolean
+}
+
 export interface TopUpResponseDto {
   topUpRequestId: number
   transactionId: number
@@ -22,6 +30,8 @@ export interface CreateTopUpPayload {
 }
 
 export const topUpService = {
+  getPaymentMethods: () => apiFetch<PaymentMethodDto[]>("/payment-methods"),
+
   createTopUp: (payload: CreateTopUpPayload) =>
     apiFetch<TopUpResponseDto>("/topups", {
       method: "POST",
