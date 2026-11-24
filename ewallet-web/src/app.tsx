@@ -6,7 +6,6 @@ import RegisterPage from "./pages/auth/register"
 import UseAuth from "./hooks/use-auth"
 import { getHomePath } from "./lib/auth-route"
 import SessionChecking from "./components/shared/session-checking"
-import AdminUserManagementPage from "./layouts/admin-dashboard"
 import CustomerLayout from "./layouts/customer-layout"
 import CustomerDashboardPage from "./pages/customer/dashboard"
 import TopUpPage from "./pages/customer/top-up-page"
@@ -18,6 +17,11 @@ import TopUpSuccessPage from "./pages/customer/top-up-success-page"
 import TopUpQrisPage from "./pages/customer/top-up-qris"
 import TransferConfirmPage from "./pages/customer/transfer-confirm-page"
 import TransferSuccessPage from "./pages/customer/transfer-success-page"
+import AdminLayout from "./layouts/admin-layout"
+import AdminDashboardPage from "./pages/admin/admin-dashboard-page"
+import AdminUsersPage from "./pages/admin/admin-users-page"
+import AdminUserDetailPage from "./pages/admin/admin-user-detail-page"
+import AdminProfilePage from "./pages/admin/admin-profile-page"
 
 export function App() {
   return (
@@ -102,10 +106,15 @@ export function App() {
         path="/admin"
         element={
           <ProtectedRoute allowedRoles={["ADMIN"]}>
-            <AdminUserManagementPage onSelectUser={undefined} />
+            <AdminLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<AdminDashboardPage />} />
+        <Route path="users" element={<AdminUsersPage />} />
+        <Route path="users/:userId" element={<AdminUserDetailPage />} />
+        <Route path="profile" element={<AdminProfilePage />} />
+      </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

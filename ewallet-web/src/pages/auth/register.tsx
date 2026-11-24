@@ -1,221 +1,418 @@
-import { useState } from "react"
+import { useState, type FormEvent } from "react"
+import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react"
+import { Link, useNavigate } from "react-router"
+
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
+import { ApiError } from "@/service/auth-api"
 
-function KodaLogo({ className = "" }) {
-  return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 28 28"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={`shrink-0 ${className}`}
-    >
-      <rect
-        x="14"
-        y="2.12132"
-        width="16.8"
-        height="16.8"
-        rx="1.5"
-        transform="rotate(45 14 2.12132)"
-        stroke="currentColor"
-        strokeWidth="2.2"
-      />
-      <rect
-        x="14"
-        y="9.75736"
-        width="6"
-        height="6"
-        rx="0.5"
-        transform="rotate(45 14 9.75736)"
-        fill="currentColor"
-      />
-    </svg>
-  )
+interface RegisterFieldErrors {
+  fullName?: string
+  username?: string
+  email?: string
+  phone?: string
+  password?: string
+  confirmPassword?: string
 }
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState({
-    fullName: "",
-    username: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
-  })
+  const navigate = useNavigate()
 
-  const handleChange = (e) => {
-    const { id, value } = e.target
-    setFormData((prev) => ({ ...prev, [id]: value }))
+  const [fullName, setFullName] = useState("")
+  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({})
+
+  const clearFieldError = (field: keyof RegisterFieldErrors) => {
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => ({ ...prev, [field]: undefined }))
+    }
   }
 
-  const handleSubmit = (e) => {
+  const validateForm = (): boolean => {
+    const errors: RegisterFieldErrors = {}
+
+    if (!fullName.trim()) {
+      errors.fullName = "Nama lengkap wajib diisi."
+    }
+
+    if (!username.trim()) {
+      errors.username = "Username wajib diisi."
+    } else if (/\s/.test(username)) {
+      errors.username = "Username tidak boleh mengandung spasi."
+    }
+
+    if (!email.trim()) {
+      errors.email = "Email wajib diisi."
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = "Format email tidak valid."
+    }
+
+    if (!phone.trim()) {
+      errors.phone = "Nomor telepon wajib diisi."
+    }
+
+    if (!password) {
+      errors.password = "Password wajib diisi."
+    } else if (password.length < 8) {
+      errors.password = "Password minimal 8 karakter."
+    }
+
+    if (!confirmPassword) {
+      errors.confirmPassword = "Konfirmasi password wajib diisi."
+    } else if (password !== confirmPassword) {
+      errors.confirmPassword = "Konfirmasi password tidak cocok."
+    }
+
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    console.log("Register Data:", formData)
+    setErrorMessage(null)
+
+    if (!validateForm()) return
+
+    setIsLoading(true)
+    try {
+      // Ganti bagian ini dengan pemanggilan fungsi register dari auth-api / useAuth
+      await new Promise((resolve) => setTimeout(resolve, 650))
+
+      navigate("/login", {
+        replace: true,
+        state: {
+          registeredMessage:
+            "Pendaftaran berhasil! Dompet digitalmu sudah aktif, silakan masuk.",
+        },
+      })
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message)
+      } else if (err instanceof Error) {
+        setErrorMessage(err.message)
+      } else {
+        setErrorMessage("Terjadi kesalahan saat mendaftarkan akun.")
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
     <div className="flex min-h-screen flex-col font-sans antialiased lg:flex-row">
-      <div className="flex min-h-[280px] w-full flex-col justify-between bg-[#1D61E7] px-8 py-10 text-white lg:min-h-screen lg:w-[37.5%] lg:px-14 lg:py-12">
-        <div className="flex items-center gap-3">
-          <KodaLogo className="text-white" />
-          <span className="text-[22px] font-bold tracking-tight">
-            KodaWallet
-          </span>
-        </div>
-
-        <div className="my-auto max-w-sm py-10 lg:py-0">
-          <h1 className="mb-4 text-3xl leading-[1.22] font-bold tracking-tight sm:text-[34px]">
-            Mulai perjalanan
+      {/* Panel Kiri: Value Proposition */}
+      <div className="flex min-h-64 w-full flex-col justify-center bg-[#135D54] px-8 py-12 text-white lg:min-h-screen lg:w-[36.11%] lg:px-14">
+        <div className="max-w-xs">
+          <h1 className="mb-4 text-4xl leading-[1.18] font-bold tracking-tight sm:text-[42px]">
+            Satu akun,
             <br />
-            finansialmu.
+            satu dompet.
           </h1>
-          <p className="text-sm font-normal text-white/85 sm:text-[15px]">
-            Buat akun dan dapatkan wallet otomatis.
+          <p className="text-[15px] leading-relaxed font-normal text-white/85">
+            Dompet digital akan otomatis dibuat setelah pendaftaran berhasil.
           </p>
         </div>
-
-        <div className="hidden h-8 lg:block" />
       </div>
 
-      <div className="flex w-full items-center justify-center bg-white px-6 py-12 sm:px-12 lg:w-[62.5%] lg:px-20">
-        <div className="w-full max-w-[660px]">
-          <div className="mb-8">
-            <h2 className="mb-1.5 text-[28px] font-bold tracking-tight text-[#0F172A]">
-              Buat akun baru
+      {/* Panel Kanan: Form Pendaftaran */}
+      <div className="flex w-full flex-1 items-center justify-center bg-white px-6 py-12 sm:px-12 lg:w-[63.89%]">
+        <div className="w-full max-w-150">
+          <div className="mb-9">
+            <h2 className="mb-1.5 text-[28px] font-bold tracking-tight text-[#1E293B]">
+              Buat akun KodaWallet
             </h2>
             <p className="text-sm text-[#64748B]">
-              Isi data di bawah untuk mendaftar.
+              Isi data pribadi untuk mulai menggunakan dompet.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div>
+          {errorMessage && (
+            <Alert
+              variant="destructive"
+              className="mb-6 rounded-xl border-red-200 bg-red-50 text-red-700"
+            >
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-xs font-medium">
+                {errorMessage}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleSubmit} noValidate className="space-y-6">
+            {/* Baris 1: Nama Lengkap & Username */}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="space-y-2">
                 <Label
                   htmlFor="fullName"
-                  className="mb-2 block text-xs font-semibold text-[#475569]"
+                  className="text-xs font-medium text-[#64748B]"
                 >
                   Nama lengkap
                 </Label>
                 <Input
                   id="fullName"
                   type="text"
-                  value={formData.fullName}
-                  onChange={handleChange}
+                  autoComplete="name"
+                  disabled={isLoading}
+                  value={fullName}
+                  onChange={(e) => {
+                    setFullName(e.target.value)
+                    clearFieldError("fullName")
+                  }}
                   placeholder="Nadia Putri"
-                  className="h-12 rounded-xl border-0 bg-[#F1F5F9] px-4 text-sm text-[#0F172A] shadow-none ring-0 transition-all placeholder:text-[#64748B] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1D61E7]"
+                  className={`h-11 rounded-lg border-transparent bg-transparent px-3 text-sm text-[#1E293B] shadow-none transition-colors placeholder:text-[#475569] focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54] ${
+                    fieldErrors.fullName
+                      ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500"
+                      : "hover:bg-slate-50/80"
+                  }`}
                 />
+                {fieldErrors.fullName && (
+                  <p className="text-xs font-medium text-red-600">
+                    {fieldErrors.fullName}
+                  </p>
+                )}
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label
                   htmlFor="username"
-                  className="mb-2 block text-xs font-semibold text-[#475569]"
+                  className="text-xs font-medium text-[#64748B]"
                 >
                   Username
                 </Label>
                 <Input
                   id="username"
                   type="text"
-                  value={formData.username}
-                  onChange={handleChange}
+                  autoComplete="username"
+                  disabled={isLoading}
+                  value={username}
+                  onChange={(e) => {
+                    setUsername(e.target.value)
+                    clearFieldError("username")
+                  }}
                   placeholder="nadia"
-                  className="h-12 rounded-xl border-0 bg-[#F1F5F9] px-4 text-sm text-[#0F172A] shadow-none ring-0 transition-all placeholder:text-[#64748B] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1D61E7]"
+                  className={`h-11 rounded-lg border-transparent bg-transparent px-3 text-sm text-[#1E293B] shadow-none transition-colors placeholder:text-[#475569] focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54] ${
+                    fieldErrors.username
+                      ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500"
+                      : "hover:bg-slate-50/80"
+                  }`}
                 />
+                {fieldErrors.username && (
+                  <p className="text-xs font-medium text-red-600">
+                    {fieldErrors.username}
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div>
+            {/* Baris 2: Email & Nomor Telepon */}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="space-y-2">
                 <Label
                   htmlFor="email"
-                  className="mb-2 block text-xs font-semibold text-[#475569]"
+                  className="text-xs font-medium text-[#64748B]"
                 >
                   Email
                 </Label>
                 <Input
                   id="email"
                   type="email"
-                  value={formData.email}
-                  onChange={handleChange}
+                  autoComplete="email"
+                  disabled={isLoading}
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    clearFieldError("email")
+                  }}
                   placeholder="nadia@example.com"
-                  className="h-12 rounded-xl border-0 bg-[#F1F5F9] px-4 text-sm text-[#0F172A] shadow-none ring-0 transition-all placeholder:text-[#64748B] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1D61E7]"
+                  className={`h-11 rounded-lg border-transparent bg-transparent px-3 text-sm text-[#1E293B] shadow-none transition-colors placeholder:text-[#475569] focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54] ${
+                    fieldErrors.email
+                      ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500"
+                      : "hover:bg-slate-50/80"
+                  }`}
                 />
+                {fieldErrors.email && (
+                  <p className="text-xs font-medium text-red-600">
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label
                   htmlFor="phone"
-                  className="mb-2 block text-xs font-semibold text-[#475569]"
+                  className="text-xs font-medium text-[#64748B]"
                 >
                   Nomor telepon
                 </Label>
                 <Input
                   id="phone"
                   type="tel"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="081234567890"
-                  className="h-12 rounded-xl border-0 bg-[#F1F5F9] px-4 text-sm text-[#0F172A] shadow-none ring-0 transition-all placeholder:text-[#64748B] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1D61E7]"
+                  autoComplete="tel"
+                  disabled={isLoading}
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value)
+                    clearFieldError("phone")
+                  }}
+                  placeholder="0812 3456 7890"
+                  className={`h-11 rounded-lg border-transparent bg-transparent px-3 text-sm text-[#1E293B] shadow-none transition-colors placeholder:text-[#475569] focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54] ${
+                    fieldErrors.phone
+                      ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500"
+                      : "hover:bg-slate-50/80"
+                  }`}
                 />
+                {fieldErrors.phone && (
+                  <p className="text-xs font-medium text-red-600">
+                    {fieldErrors.phone}
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div>
+            {/* Baris 3: Password & Konfirmasi Password */}
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="space-y-2">
                 <Label
                   htmlFor="password"
-                  className="mb-2 block text-xs font-semibold text-[#475569]"
+                  className="text-xs font-medium text-[#64748B]"
                 >
                   Password
                 </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className="h-12 rounded-xl border-0 bg-[#F1F5F9] px-4 text-sm tracking-widest text-[#0F172A] shadow-none ring-0 transition-all placeholder:text-[#64748B] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1D61E7]"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    disabled={isLoading}
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value)
+                      clearFieldError("password")
+                    }}
+                    placeholder="Minimal 8 karakter"
+                    className={`h-11 rounded-lg border-transparent bg-transparent pr-10 pl-3 text-sm text-[#1E293B] shadow-none transition-colors placeholder:text-[#475569] focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54] ${
+                      fieldErrors.password
+                        ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500"
+                        : "hover:bg-slate-50/80"
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    aria-label={
+                      showPassword ? "Sembunyikan password" : "Lihat password"
+                    }
+                    className="absolute top-1/2 right-3 -translate-y-1/2 text-[#64748B] transition-colors hover:text-[#1E293B] disabled:opacity-50"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                {fieldErrors.password && (
+                  <p className="text-xs font-medium text-red-600">
+                    {fieldErrors.password}
+                  </p>
+                )}
               </div>
 
-              <div>
+              <div className="space-y-2">
                 <Label
                   htmlFor="confirmPassword"
-                  className="mb-2 block text-xs font-semibold text-[#475569]"
+                  className="text-xs font-medium text-[#64748B]"
                 >
                   Konfirmasi password
                 </Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className="h-12 rounded-xl border-0 bg-[#F1F5F9] px-4 text-sm tracking-widest text-[#0F172A] shadow-none ring-0 transition-all placeholder:text-[#64748B] focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#1D61E7]"
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    autoComplete="new-password"
+                    disabled={isLoading}
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value)
+                      clearFieldError("confirmPassword")
+                    }}
+                    placeholder="Ulangi password"
+                    className={`h-11 rounded-lg border-transparent bg-transparent pr-10 pl-3 text-sm text-[#1E293B] shadow-none transition-colors placeholder:text-[#475569] focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54] ${
+                      fieldErrors.confirmPassword
+                        ? "border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500"
+                        : "hover:bg-slate-50/80"
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    disabled={isLoading}
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    aria-label={
+                      showConfirmPassword
+                        ? "Sembunyikan konfirmasi password"
+                        : "Lihat konfirmasi password"
+                    }
+                    className="absolute top-1/2 right-3 -translate-y-1/2 text-[#64748B] transition-colors hover:text-[#1E293B] disabled:opacity-50"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                {fieldErrors.confirmPassword && (
+                  <p className="text-xs font-medium text-red-600">
+                    {fieldErrors.confirmPassword}
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="pt-4">
+            {/* Info Dompet Otomatis */}
+            <p className="pt-2 text-xs text-[#64748B]">
+              Akun baru akan mendapatkan dompet aktif dengan saldo Rp0.
+            </p>
+
+            {/* Tombol Buat Akun */}
+            <div>
               <Button
                 type="submit"
-                className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#1D61E7] px-5 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#1652C8] active:scale-[0.99]"
+                disabled={isLoading}
+                className="h-11 w-full cursor-pointer justify-start rounded-lg bg-[#135D54] px-5 text-sm font-medium text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99] disabled:opacity-70"
               >
-                Daftar Sekarang
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Mendaftarkan akun...</span>
+                  </span>
+                ) : (
+                  "Buat akun"
+                )}
               </Button>
             </div>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-xs font-semibold text-[#1D61E7]">
-              Sudah punya akun?{" "}
-              <a href="#login" className="ml-0.5 hover:underline">
+          {/* Tautan Sudah Terdaftar */}
+          <div className="mt-7 text-center">
+            <p className="text-xs font-semibold text-[#135D54]">
+              Sudah terdaftar?{" "}
+              <Link to="/login" className="ml-1 hover:underline">
                 Masuk
-              </a>
+              </Link>
             </p>
           </div>
         </div>
