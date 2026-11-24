@@ -39,7 +39,7 @@ public sealed class TransferService(
 
         try
         {
-            var sender = await walletRepo.GetByUserId(currentUserId, ct)
+            var sender = await walletRepo.GetTrackedByUserIdAsync(currentUserId, ct)
                 ?? throw new InvalidOperationException("Wallet pengirim tidak ditemukan.");
             senderWalletIdForAudit = sender.Id;
 

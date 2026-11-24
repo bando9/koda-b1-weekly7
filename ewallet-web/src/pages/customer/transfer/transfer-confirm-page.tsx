@@ -1,15 +1,15 @@
 import { useState } from "react"
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react"
-import { Link, useLocation, useNavigate } from "react-router"
+import { Link, Navigate, useLocation, useNavigate } from "react-router"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { transferService } from "@/service/transfer-service"
 import { formatToRupiah } from "@/utils"
 
 interface TransferConfirmState {
-  recipientName?: string
-  recipientUsername?: string
+  receiverWalletNumber?: string
   amount?: number
   note?: string
   currentBalance?: number
@@ -20,15 +20,20 @@ export default function TransferConfirmPage() {
   const location = useLocation()
 
   const state = (location.state as TransferConfirmState | null) ?? {}
-  const recipientName = state.recipientName ?? "Bima Pratama"
-  const amount = state.amount ?? 75000
-  const note = state.note ?? "Bayar makan siang"
-  const currentBalance = state.currentBalance ?? 1250000
-
-  const remainingBalance = currentBalance - amount
+  const receiverWalletNumber = state.receiverWalletNumber
+  const amount = state.amount ?? 0
+  const note = state.note ?? ""
+  const currentBalance = state.currentBalance ?? 0
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  // Redirect ke form transfer jika halaman dibuka langsung tanpa state
+  if (!receiverWalletNumber || amount <= 0) {
+    return <Navigate to="/dashboard/transfer" replace />
+  }
+
+  const remainingBalance = currentBalance - amount
 
   const handleConfirmTransfer = async () => {
     setErrorMessage(null)
@@ -40,20 +45,29 @@ export default function TransferConfirmPage() {
 
     setIsSubmitting(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 650))
+      // Panggil backend POST /api/v1/transfers
+      const result = await transferService.createTransfer({
+        receiverWalletNumber,
+        amount,
+        description: note.trim() ? note.trim() : undefined,
+      })
 
       navigate("/dashboard/transfer/success", {
         replace: true,
         state: {
-          recipientName,
-          amount,
-          note,
-          referenceNumber: "TRF-20261118-0042",
-          remainingBalance,
+          recipientName: result.receiverWalletNumber,
+          amount: result.amount,
+          note: result.description ?? note,
+          referenceNumber: result.referenceNo,
+          remainingBalance: result.senderBalanceAfter,
         },
       })
-    } catch {
-      setErrorMessage("Gagal memproses transfer. Silakan coba lagi.")
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : "Gagal memproses transfer. Silakan coba lagi."
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -71,7 +85,7 @@ export default function TransferConfirmPage() {
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center px-5 pb-16">
-        <div className="w-full max-w-[560px]">
+        <div className="w-full max-w-140">
           <div className="mb-5">
             <Link
               to="/dashboard/transfer"
@@ -108,10 +122,10 @@ export default function TransferConfirmPage() {
               <div className="space-y-5 text-sm">
                 <div className="grid grid-cols-12 items-center gap-2">
                   <span className="col-span-5 text-xs text-[#64748B]">
-                    Penerima
+                    Dompet penerima
                   </span>
                   <span className="col-span-7 text-sm font-bold text-[#1E293B]">
-                    {recipientName}
+                    {receiverWalletNumber}
                   </span>
                 </div>
 

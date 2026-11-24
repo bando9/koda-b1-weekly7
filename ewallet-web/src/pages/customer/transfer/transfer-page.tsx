@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { AlertCircle, Check } from "lucide-react"
 import { useNavigate, useOutletContext } from "react-router"
 
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { dashboardService, type WalletDto } from "@/service/dashboard-service"
 import { formatRupiah, formatToRupiah } from "@/utils"
 
 interface CustomerLayoutContext {
@@ -15,59 +16,41 @@ interface CustomerLayoutContext {
   initials: string
 }
 
-interface RecipientUser {
-  id: string
-  name: string
-  username: string
-  walletNumber: string
-  initials: string
-}
-
-const MOCK_RECIPIENTS: RecipientUser[] = [
-  {
-    id: "usr-1",
-    name: "Bima Pratama",
-    username: "bima",
-    walletNumber: "KW •••• 2941",
-    initials: "BP",
-  },
-  {
-    id: "usr-2",
-    name: "Rina Wulandari",
-    username: "rina",
-    walletNumber: "KW •••• 5108",
-    initials: "RW",
-  },
-]
-
 export default function TransferPage() {
   const navigate = useNavigate()
   const context = useOutletContext<CustomerLayoutContext | undefined>()
-  const displayName = context?.displayName ?? "Nadia"
-  const initials = context?.initials ?? "NP"
+  const displayName = context?.displayName ?? "Pengguna"
+  const initials = context?.initials ?? "U"
 
-  const availableBalance = 1250000
+  const [wallet, setWallet] = useState<WalletDto | null>(null)
+  const [isLoadingWallet, setIsLoadingWallet] = useState<boolean>(true)
 
-  const [recipientQuery, setRecipientQuery] = useState<string>("bima")
+  const [receiverWalletNumber, setReceiverWalletNumber] = useState<string>("")
   const [rawAmount, setRawAmount] = useState<string>("75000")
-  const [note, setNote] = useState<string>("Bayar makan siang")
+  const [note, setNote] = useState<string>("")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
+  useEffect(() => {
+    let isCancelled = false
+
+    dashboardService
+      .getMyWallet()
+      .then((res) => {
+        if (!isCancelled) setWallet(res)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!isCancelled) setIsLoadingWallet(false)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
+  const availableBalance = wallet?.balance ?? 0
   const numericAmount = Number(rawAmount) || 0
-
-  const matchedRecipient = useMemo(() => {
-    const query = recipientQuery.trim().toLowerCase().replace(/^@/, "")
-    if (!query) return null
-
-    return (
-      MOCK_RECIPIENTS.find(
-        (u) =>
-          u.username.toLowerCase().includes(query) ||
-          u.walletNumber.toLowerCase().includes(query) ||
-          u.name.toLowerCase().includes(query)
-      ) ?? null
-    )
-  }, [recipientQuery])
+  const trimmedWalletNumber = receiverWalletNumber.trim()
 
   const handleAmountChange = (value: string) => {
     const digitsOnly = value.replace(/\D/g, "")
@@ -79,15 +62,21 @@ export default function TransferPage() {
     e.preventDefault()
     setErrorMessage(null)
 
-    if (!matchedRecipient) {
-      setErrorMessage(
-        "Penerima tidak ditemukan. Periksa username atau nomor dompet."
-      )
+    if (!trimmedWalletNumber) {
+      setErrorMessage("Nomor dompet penerima wajib diisi.")
       return
     }
 
-    if (numericAmount < 1000) {
-      setErrorMessage("Minimal nominal transfer adalah Rp 1.000.")
+    if (
+      wallet?.walletNumber &&
+      trimmedWalletNumber.toLowerCase() === wallet.walletNumber.toLowerCase()
+    ) {
+      setErrorMessage("Tidak dapat melakukan transfer ke dompet sendiri.")
+      return
+    }
+
+    if (numericAmount < 10000) {
+      setErrorMessage("Minimal nominal transfer adalah Rp 10.000.")
       return
     }
 
@@ -98,10 +87,9 @@ export default function TransferPage() {
 
     navigate("/dashboard/transfer/confirm", {
       state: {
-        recipientName: matchedRecipient.name,
-        recipientUsername: matchedRecipient.username,
+        receiverWalletNumber: trimmedWalletNumber,
         amount: numericAmount,
-        note,
+        note: note.trim(),
         currentBalance: availableBalance,
       },
     })
@@ -161,39 +149,38 @@ export default function TransferPage() {
 
                 <div className="space-y-2">
                   <Label
-                    htmlFor="recipient-search"
+                    htmlFor="recipient-wallet"
                     className="text-xs font-medium text-[#64748B]"
                   >
-                    Cari username / nomor dompet
+                    Nomor dompet tujuan
                   </Label>
                   <Input
-                    id="recipient-search"
+                    id="recipient-wallet"
                     type="text"
-                    value={recipientQuery}
+                    value={receiverWalletNumber}
                     onChange={(e) => {
-                      setRecipientQuery(e.target.value)
+                      setReceiverWalletNumber(e.target.value)
                       if (errorMessage) setErrorMessage(null)
                     }}
-                    placeholder="Masukkan username atau nomor dompet"
+                    placeholder="Contoh: W-123456789012"
                     className="h-11 rounded-xl border-transparent bg-transparent px-3 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
                   />
                 </div>
 
-                {matchedRecipient && (
+                {trimmedWalletNumber.length >= 4 && (
                   <div className="flex items-center justify-between rounded-2xl bg-[#EDF5F3] px-5 py-4">
                     <div className="flex items-center gap-3.5">
                       <Avatar className="h-11 w-11">
                         <AvatarFallback className="bg-[#135D54] text-sm font-semibold text-white">
-                          {matchedRecipient.initials}
+                          KW
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="text-sm font-bold text-[#1E293B]">
-                          {matchedRecipient.name}
+                          {trimmedWalletNumber}
                         </p>
                         <p className="mt-0.5 text-xs text-[#64748B]">
-                          @{matchedRecipient.username} &nbsp;·&nbsp;{" "}
-                          {matchedRecipient.walletNumber}
+                          Dompet KodaWallet tujuan
                         </p>
                       </div>
                     </div>
@@ -224,6 +211,9 @@ export default function TransferPage() {
                     className="h-11 rounded-xl border-transparent bg-transparent pl-9 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
                   />
                 </div>
+                <p className="text-[11px] text-[#94A3B8]">
+                  Minimal transfer Rp 10.000
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -246,7 +236,8 @@ export default function TransferPage() {
               <div className="pt-2">
                 <Button
                   type="submit"
-                  className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#135D54] px-5 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99]"
+                  disabled={isLoadingWallet}
+                  className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#135D54] px-5 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99] disabled:opacity-70"
                 >
                   Tinjau transfer
                 </Button>
@@ -263,13 +254,18 @@ export default function TransferPage() {
 
             <div className="border-b border-slate-100 pb-6">
               <p className="mb-2 text-xs text-[#64748B]">Saldo tersedia</p>
-              <p className="text-[28px] font-bold tracking-tight text-[#1E293B]">
-                {formatToRupiah(availableBalance)}
-              </p>
+              {isLoadingWallet ? (
+                <div className="h-9 w-40 animate-pulse rounded-lg bg-slate-100" />
+              ) : (
+                <p className="text-[28px] font-bold tracking-tight text-[#1E293B]">
+                  {formatToRupiah(availableBalance)}
+                </p>
+              )}
             </div>
 
             <p className="pt-5 text-xs leading-relaxed text-[#64748B]">
-              Pastikan penerima dan nominal sudah benar sebelum melanjutkan.
+              Pastikan nomor dompet penerima dan nominal sudah benar sebelum
+              melanjutkan.
             </p>
           </CardContent>
         </Card>

@@ -14,5 +14,7 @@ public interface IWalletRepository
 
     Task<Wallet?> GetByUserId (long userId, CancellationToken ct);
 
+    Task<Wallet?> GetTrackedByUserIdAsync(long userId, CancellationToken ct);
+
 
 }

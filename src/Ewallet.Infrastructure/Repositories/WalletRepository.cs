@@ -26,7 +26,5 @@ public sealed class WalletRepository(AppDbContext db) : IWalletRepository
 
     public async Task<Wallet?> GetByUserId (long userId, CancellationToken ct) => await _db.Wallets.AsNoTracking().FirstOrDefaultAsync(w=>w.UserId == userId,ct);
 
-
-
-    // public async Task
+    public async Task<Wallet?> GetTrackedByUserIdAsync(long userId, CancellationToken ct) => await _db.Wallets.FirstOrDefaultAsync(w => w.UserId == userId, ct);
 }

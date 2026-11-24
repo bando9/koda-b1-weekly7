@@ -1,5 +1,5 @@
 import { Check } from "lucide-react"
-import { Link, useLocation } from "react-router"
+import { Link, Navigate, useLocation } from "react-router"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -9,15 +9,21 @@ interface TransferSuccessState {
   recipientName?: string
   amount?: number
   referenceNumber?: string
+  remainingBalance?: number
 }
 
 export default function TransferSuccessPage() {
   const location = useLocation()
 
   const state = (location.state as TransferSuccessState | null) ?? {}
-  const recipientName = state.recipientName ?? "Bima Pratama"
-  const amount = state.amount ?? 75000
-  const referenceNumber = state.referenceNumber ?? "TRF-20261118-0042"
+
+  if (!state.referenceNumber || !state.amount) {
+    return <Navigate to="/dashboard/transfer" replace />
+  }
+
+  const recipientName = state.recipientName ?? "-"
+  const amount = state.amount
+  const referenceNumber = state.referenceNumber
 
   return (
     <div className="flex min-h-screen flex-col bg-white font-sans antialiased">
@@ -31,7 +37,7 @@ export default function TransferSuccessPage() {
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center px-5 pb-16">
-        <Card className="w-full max-w-[560px] rounded-3xl border-0 bg-[#F7F9F8] shadow-none">
+        <Card className="w-full max-w-140 rounded-3xl border-0 bg-[#F7F9F8] shadow-none">
           <CardContent className="flex flex-col items-center px-8 py-12 text-center sm:px-12 sm:py-14">
             <div className="mb-7 flex h-24 w-24 items-center justify-center rounded-full bg-[#E9F1EE]">
               <Check className="h-10 w-10 stroke-[3.2] text-[#135D54]" />
@@ -55,13 +61,14 @@ export default function TransferSuccessPage() {
 
             <div className="mt-10 w-full max-w-md space-y-5">
               <Button
+                nativeButton={false}
                 className="h-12 w-full justify-start rounded-xl bg-[#135D54] px-5 text-xs font-semibold text-white shadow-none transition-all hover:bg-[#0F4C44]"
                 render={
                   <Link to="/dashboard/activities">
                     Lihat riwayat transaksi
                   </Link>
                 }
-              ></Button>
+              />
 
               <div>
                 <Link

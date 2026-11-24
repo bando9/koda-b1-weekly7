@@ -100,7 +100,7 @@ public sealed class TopUpService (
 
     public async Task<TopUpResponse> CreateAsync(long currentUserId,CreateTopUpRequest request, CancellationToken ct)
     {
-        var wallet = await walletRepository.GetByIdAsync(currentUserId,ct) ?? throw new InvalidOperationException("wallet tidak ditemukan");
+        var wallet = await walletRepository.GetTrackedByUserIdAsync(currentUserId,ct) ?? throw new InvalidOperationException("wallet tidak ditemukan");
 
         if (wallet.Status != WalletStatusEnum.ACTIVE)
         {
