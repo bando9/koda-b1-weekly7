@@ -13,6 +13,11 @@ import TopUpPage from "./pages/customer/top-up-page"
 import TransferPage from "./pages/customer/transfer-page"
 import ActivitiesPage from "./pages/customer/activities-page"
 import SettingsPage from "./pages/customer/setting-page"
+import TopUpConfirmPage from "./pages/customer/top-up-confirm-page"
+import TopUpSuccessPage from "./pages/customer/top-up-success-page"
+import TopUpQrisPage from "./pages/customer/top-up-qris"
+import TransferConfirmPage from "./pages/customer/transfer-confirm-page"
+import TransferSuccessPage from "./pages/customer/transfer-success-page"
 
 export function App() {
   return (
@@ -51,6 +56,47 @@ export function App() {
         <Route path="activities" element={<ActivitiesPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
+
+      <Route
+        path="/dashboard/top-up/confirm"
+        element={
+          <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+            <TopUpConfirmPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/top-up/qris"
+        element={
+          <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+            <TopUpQrisPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/top-up/success"
+        element={
+          <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+            <TopUpSuccessPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/transfer/confirm"
+        element={
+          <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+            <TransferConfirmPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/transfer/success"
+        element={
+          <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+            <TransferSuccessPage />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/admin"

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react"
-import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
-import { useOutletContext } from "react-router"
+import { AlertCircle } from "lucide-react"
+import { useNavigate, useOutletContext } from "react-router"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -39,19 +39,17 @@ const PAYMENT_METHODS: PaymentMethodOption[] = [
 ]
 
 export default function TopUpPage() {
+  const navigate = useNavigate()
   const context = useOutletContext<CustomerLayoutContext | undefined>()
   const displayName = context?.displayName ?? "Nadia"
   const initials = context?.initials ?? "NP"
 
-  const [currentBalance, setCurrentBalance] = useState<number>(1250000)
+  const currentBalance = 1250000
 
   const [rawAmount, setRawAmount] = useState<string>("250000")
   const [selectedMethod, setSelectedMethod] =
     useState<PaymentMethodId>("bank_transfer")
-
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const numericAmount = Number(rawAmount) || 0
 
@@ -59,37 +57,38 @@ export default function TopUpPage() {
     const digitsOnly = value.replace(/\D/g, "")
     setRawAmount(digitsOnly)
     if (errorMessage) setErrorMessage(null)
-    if (successMessage) setSuccessMessage(null)
   }
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setErrorMessage(null)
-    setSuccessMessage(null)
 
     if (numericAmount < 10000) {
       setErrorMessage("Minimal nominal isi saldo adalah Rp 10.000.")
       return
     }
 
-    setIsSubmitting(true)
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 600))
-
-      const methodLabel =
-        PAYMENT_METHODS.find((m) => m.id === selectedMethod)?.title ?? ""
-
-      setCurrentBalance((prev) => prev + numericAmount)
-      setSuccessMessage(
-        `Permintaan isi saldo sebesar ${formatToRupiah(numericAmount)} via ${methodLabel} berhasil dikonfirmasi.`
-      )
-    } catch {
-      setErrorMessage(
-        "Gagal memproses permintaan isi saldo. Silakan coba lagi."
-      )
-    } finally {
-      setIsSubmitting(false)
+    if (selectedMethod === "qris") {
+      navigate("/dashboard/top-up/qris", {
+        state: {
+          amount: numericAmount,
+          currentBalance,
+        },
+      })
+      return
     }
+
+    const methodLabel =
+      PAYMENT_METHODS.find((m) => m.id === selectedMethod)?.title ?? ""
+
+    navigate("/dashboard/top-up/confirm", {
+      state: {
+        recipientName: displayName,
+        amount: numericAmount,
+        paymentMethod: methodLabel,
+        currentBalance,
+      },
+    })
   }
 
   return (
@@ -143,15 +142,6 @@ export default function TopUpPage() {
               </Alert>
             )}
 
-            {successMessage && (
-              <Alert className="mb-6 rounded-xl border-emerald-200 bg-emerald-50 text-emerald-800">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <AlertDescription className="text-xs font-medium">
-                  {successMessage}
-                </AlertDescription>
-              </Alert>
-            )}
-
             <form onSubmit={handleSubmit} className="space-y-7">
               <div className="space-y-2.5">
                 <Label
@@ -168,7 +158,6 @@ export default function TopUpPage() {
                     id="topup-amount"
                     type="text"
                     inputMode="numeric"
-                    disabled={isSubmitting}
                     value={rawAmount ? formatRupiah(numericAmount) : ""}
                     onChange={(e) => handleAmountChange(e.target.value)}
                     placeholder="0"
@@ -188,13 +177,9 @@ export default function TopUpPage() {
                       <button
                         key={method.id}
                         type="button"
-                        disabled={isSubmitting}
-                        onClick={() => {
-                          setSelectedMethod(method.id)
-                          if (successMessage) setSuccessMessage(null)
-                        }}
+                        onClick={() => setSelectedMethod(method.id)}
                         className={cn(
-                          "cursor-pointer rounded-2xl p-5 text-left transition-all focus-visible:ring-2 focus-visible:ring-[#135D54] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60",
+                          "cursor-pointer rounded-2xl p-5 text-left transition-all focus-visible:ring-2 focus-visible:ring-[#135D54] focus-visible:outline-none",
                           isSelected
                             ? "bg-[#EDF5F3]"
                             : "bg-transparent hover:bg-slate-50"
@@ -215,17 +200,9 @@ export default function TopUpPage() {
               <div className="pt-6">
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#135D54] px-5 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99] disabled:opacity-70"
+                  className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#135D54] px-5 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99]"
                 >
-                  {isSubmitting ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Memproses pembayaran...</span>
-                    </span>
-                  ) : (
-                    "Lanjutkan pembayaran"
-                  )}
+                  Lanjutkan pembayaran
                 </Button>
               </div>
             </form>

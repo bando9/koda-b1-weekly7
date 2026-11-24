@@ -1,19 +1,11 @@
 import { useMemo, useState, type FormEvent } from "react"
-import { AlertCircle, Check, CheckCircle2, Loader2 } from "lucide-react"
-import { useOutletContext } from "react-router"
+import { AlertCircle, Check } from "lucide-react"
+import { useNavigate, useOutletContext } from "react-router"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatRupiah, formatToRupiah } from "@/utils"
@@ -50,27 +42,20 @@ const MOCK_RECIPIENTS: RecipientUser[] = [
 ]
 
 export default function TransferPage() {
+  const navigate = useNavigate()
   const context = useOutletContext<CustomerLayoutContext | undefined>()
   const displayName = context?.displayName ?? "Nadia"
   const initials = context?.initials ?? "NP"
 
-  // State simulasi saldo tersedia
-  const [availableBalance, setAvailableBalance] = useState<number>(1250000)
+  const availableBalance = 1250000
 
-  // State form transfer (default disesuaikan dengan gambar)
   const [recipientQuery, setRecipientQuery] = useState<string>("bima")
   const [rawAmount, setRawAmount] = useState<string>("75000")
   const [note, setNote] = useState<string>("Bayar makan siang")
-
-  // State UI & modal tinjauan
-  const [isReviewOpen, setIsReviewOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const numericAmount = Number(rawAmount) || 0
 
-  // Cari penerima berdasarkan username atau nomor dompet
   const matchedRecipient = useMemo(() => {
     const query = recipientQuery.trim().toLowerCase().replace(/^@/, "")
     if (!query) return null
@@ -89,13 +74,11 @@ export default function TransferPage() {
     const digitsOnly = value.replace(/\D/g, "")
     setRawAmount(digitsOnly)
     if (errorMessage) setErrorMessage(null)
-    if (successMessage) setSuccessMessage(null)
   }
 
   const handleOpenReview = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setErrorMessage(null)
-    setSuccessMessage(null)
 
     if (!matchedRecipient) {
       setErrorMessage(
@@ -114,28 +97,15 @@ export default function TransferPage() {
       return
     }
 
-    setIsReviewOpen(true)
-  }
-
-  const handleConfirmTransfer = async () => {
-    if (!matchedRecipient) return
-
-    setIsSubmitting(true)
-    try {
-      // Simulasi API transfer
-      await new Promise((resolve) => setTimeout(resolve, 600))
-
-      setAvailableBalance((prev) => prev - numericAmount)
-      setSuccessMessage(
-        `Transfer sebesar ${formatToRupiah(numericAmount)} ke ${matchedRecipient.name} berhasil dikirim.`
-      )
-      setIsReviewOpen(false)
-    } catch {
-      setErrorMessage("Gagal memproses transfer. Silakan coba lagi.")
-      setIsReviewOpen(false)
-    } finally {
-      setIsSubmitting(false)
-    }
+    navigate("/dashboard/transfer/confirm", {
+      state: {
+        recipientName: matchedRecipient.name,
+        recipientUsername: matchedRecipient.username,
+        amount: numericAmount,
+        note,
+        currentBalance: availableBalance,
+      },
+    })
   }
 
   return (
@@ -184,15 +154,6 @@ export default function TransferPage() {
               </Alert>
             )}
 
-            {successMessage && (
-              <Alert className="mb-6 rounded-xl border-emerald-200 bg-emerald-50 text-emerald-800">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <AlertDescription className="text-xs font-medium">
-                  {successMessage}
-                </AlertDescription>
-              </Alert>
-            )}
-
             <form onSubmit={handleOpenReview} className="space-y-6">
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold tracking-wider text-[#64748B] uppercase">
@@ -213,7 +174,6 @@ export default function TransferPage() {
                     onChange={(e) => {
                       setRecipientQuery(e.target.value)
                       if (errorMessage) setErrorMessage(null)
-                      if (successMessage) setSuccessMessage(null)
                     }}
                     placeholder="Masukkan username atau nomor dompet"
                     className="h-11 rounded-xl border-transparent bg-transparent px-3 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
@@ -315,89 +275,6 @@ export default function TransferPage() {
           </CardContent>
         </Card>
       </div>
-
-      <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-        <DialogContent className="rounded-2xl sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-[#1E293B]">
-              Tinjau transfer
-            </DialogTitle>
-            <DialogDescription className="text-xs text-[#64748B]">
-              Periksa kembali detail penerima dan nominal sebelum mengirim
-              saldo.
-            </DialogDescription>
-          </DialogHeader>
-
-          {matchedRecipient && (
-            <div className="space-y-4 py-2 text-sm">
-              <div className="flex items-center gap-3 rounded-xl bg-[#EDF5F3] p-3.5">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-[#135D54] text-xs font-semibold text-white">
-                    {matchedRecipient.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-bold text-[#1E293B]">
-                    {matchedRecipient.name}
-                  </p>
-                  <p className="text-xs text-[#64748B]">
-                    @{matchedRecipient.username} ·{" "}
-                    {matchedRecipient.walletNumber}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2.5 rounded-xl border border-slate-100 p-4 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-[#64748B]">Nominal transfer</span>
-                  <span className="font-bold text-[#1E293B]">
-                    {formatToRupiah(numericAmount)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#64748B]">Biaya transaksi</span>
-                  <span className="font-semibold text-[#135D54]">Gratis</span>
-                </div>
-                {note.trim() && (
-                  <div className="flex justify-between gap-4 border-t border-slate-100 pt-2.5">
-                    <span className="text-[#64748B]">Catatan</span>
-                    <span className="text-right font-medium text-[#1E293B]">
-                      {note}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          <DialogFooter className="gap-2 sm:justify-end">
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={isSubmitting}
-              onClick={() => setIsReviewOpen(false)}
-              className="rounded-xl text-xs font-semibold text-[#64748B]"
-            >
-              Batal
-            </Button>
-            <Button
-              type="button"
-              disabled={isSubmitting}
-              onClick={handleConfirmTransfer}
-              className="rounded-xl bg-[#135D54] text-xs font-semibold text-white hover:bg-[#0F4C44]"
-            >
-              {isSubmitting ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Mengirim...</span>
-                </span>
-              ) : (
-                "Kirim sekarang"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
