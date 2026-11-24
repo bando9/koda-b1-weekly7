@@ -11,9 +11,9 @@ namespace Ewallet.Application.Services;
 
 public interface ITopUpService
 {
-    Task<TopUpResponse> CreateAsync(CreateTopUpRequest request, CancellationToken ct);
-    Task<TopUpResponse> GetByIdAsync(long topUpRequestId, CancellationToken ct);
-    Task<TopUpResponse> ConfirmAsync(long topUpRequestId, CancellationToken ct);
+    Task<TopUpResponse> CreateAsync(long currentUserId,CreateTopUpRequest request, CancellationToken ct);
+    Task<TopUpResponse> GetByIdAsync(long currentUserId, bool isAdmin,long topUpRequestId, CancellationToken ct);
+    Task<TopUpResponse> ConfirmAsync(long currentUserId, bool isAdmin,long topUpRequestId, CancellationToken ct);
 }
 
 public sealed class TopUpService (
@@ -30,13 +30,16 @@ public sealed class TopUpService (
     private readonly IAppDbContext _db=db;
     private static readonly TimeSpan RequestLifeTime = TimeSpan.FromHours(24);
     
-    public async Task<TopUpResponse> ConfirmAsync(long topUpRequestId, CancellationToken ct)
+    public async Task<TopUpResponse> ConfirmAsync(long currentUserId, bool isAdmin,long topUpRequestId, CancellationToken ct)
     {
         await using var dbTx = await _db.Database.BeginTransactionAsync(ct);
 
         try
         {
             var topup = await topUpRepository.GetByIdAsync(topUpRequestId,ct) ?? throw new InvalidOperationException($"Topup dg id {topUpRequestId} tidak ditemukan");
+
+            if (!isAdmin && topup.Wallet.UserId != currentUserId)
+            throw new UnauthorizedAccessException("Anda tidak berhak mengonfirmasi top up milik pengguna lain.");
             
             var transaction = topup.Transaction;
             var wallet = topup.Wallet;
@@ -95,12 +98,11 @@ public sealed class TopUpService (
         }
     }
 
-    public async Task<TopUpResponse> CreateAsync(CreateTopUpRequest request, CancellationToken ct)
+    public async Task<TopUpResponse> CreateAsync(long currentUserId,CreateTopUpRequest request, CancellationToken ct)
     {
-        var wallet = await walletRepository.GetByIdAsync(request.WalletId,ct) ?? throw new InvalidOperationException("wallet tidak ditemukan");
+        var wallet = await walletRepository.GetByIdAsync(currentUserId,ct) ?? throw new InvalidOperationException("wallet tidak ditemukan");
 
-        WalletStatusEnum active = WalletStatusEnum.ACTIVE;
-        if (wallet.Status != active)
+        if (wallet.Status != WalletStatusEnum.ACTIVE)
         {
             throw new InvalidOperationException("wallet tidak berstatus ACTIVE");
         }
@@ -151,7 +153,16 @@ public sealed class TopUpService (
 
     }
 
-    public async Task<TopUpResponse> GetByIdAsync(long topUpRequestId, CancellationToken ct) => await topUpRepository.GetResponseByIdAsync(topUpRequestId, ct) ?? throw new ArgumentException($"topup dg id: {topUpRequestId} tidak ditemukan");
+    public async Task<TopUpResponse> GetByIdAsync(long currentUserId, bool isAdmin, long topUpRequestId, CancellationToken ct)
+    {
+        var topup = await topUpRepository.GetByIdAsync(topUpRequestId, ct) 
+                ?? throw new KeyNotFoundException($"topup dg id: {topUpRequestId} tidak ditemukan");
+
+        if(!isAdmin && topup.Wallet.UserId != currentUserId)
+            throw new UnauthorizedAccessException("Anda tidak memiliki akses untuk top up.");
+
+        return Map(topup,topup.Transaction,topup.PaymentMethod.Code);
+    }
 
     private static string GenerateNumberRange(int length)
     {

@@ -1,0 +1,212 @@
+@baseUrl = http://localhost:5138
+
+### ==========================================
+### 1. AUTHENTICATION (PUBLIC)
+### ==========================================
+
+### 1.1 Register User A (Customer)
+# @name registerUserA
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Budi Santoso",
+  "userName": "budisantoso",
+  "email": "budi@example.com",
+  "phoneNumber": "081234567890",
+  "password": "Password123!"
+}
+
+### 1.2 Register User B (Customer Kedua - untuk tes kepemilikan/IDOR)
+# @name registerUserB
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Siti Aminah",
+  "userName": "sitiaminah",
+  "email": "siti@example.com",
+  "phoneNumber": "081298765432",
+  "password": "Password123!"
+}
+
+### 1.3 Login User A (Otomatis menangkap accessToken)
+# @name loginUserA
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "budi@example.com",
+  "password": "Password123!"
+}
+
+### Simpan token User A ke variabel
+# @tokenA = {{loginUserA.response.body.accessToken}}
+
+### 1.4 Login User B
+# @name loginUserB
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "siti@example.com",
+  "password": "Password123!"
+}
+
+# @tokenB = {{loginUserB.response.body.accessToken}}
+
+### 1.5 Login Admin (Pastikan akun admin sudah di-seed di database)
+# @name loginAdmin
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "identifier": "admin",
+  "password": "Admin#12345!"
+}
+
+# @tokenAdmin = {{loginAdmin.response.body.accessToken}}
+
+
+### ==========================================
+### 2. CURRENT USER & PROFILE (JWT REQUIRED)
+### ==========================================
+
+### 2.1 Cek Current User dari Klaim Token
+GET {{baseUrl}}/api/v1/auth/me
+Authorization: Bearer {{loginUserA.response.body.accessToken}}
+
+### 2.2 Lihat Profil Lengkap User A
+GET {{baseUrl}}/api/v1/auth/profile
+Authorization: Bearer {{loginUserA.response.body.accessToken}}
+
+### 2.3 Update Profil User A
+PUT {{baseUrl}}/api/v1/profile
+Authorization: Bearer {{loginUserA.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Budi Santoso Update",
+  "phoneNumber": "081234567899"
+}
+
+### 2.4 Change Password User A
+POST {{baseUrl}}/api/v1/profile/change-password
+Authorization: Bearer {{loginUserA.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "Password123!",
+  "newPassword": "NewPassword123!"
+}
+
+
+### ==========================================
+### 3. WALLET, TOP UP, TRANSFER & MUTATIONS
+### ==========================================
+
+### 3.1 Cek Info Wallet User A (Ambil walletNumber untuk transfer)
+# @name walletA
+GET {{baseUrl}}/api/v1/wallets/me
+Authorization: Bearer {{loginUserA.response.body.accessToken}}
+
+### 3.2 Cek Info Wallet User B (Catat walletNumber milik Siti)
+# @name walletB
+GET {{baseUrl}}/api/v1/wallets/me
+Authorization: Bearer {{loginUserB.response.body.accessToken}}
+
+# @walletNumberB = {{walletB.response.body.walletNumber}}
+
+### 3.3 Create Top Up User A (Tanpa mengirim WalletId, otomatis pakai wallet User A)
+# @name createTopUpA
+POST {{baseUrl}}/api/v1/topup
+Authorization: Bearer {{loginUserA.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "paymentMethodId": 1,
+  "amount": 500000
+}
+
+# @topUpIdA = {{createTopUpA.response.body.topUpRequestId}}
+
+### 3.4 Get Detail Top Up User A
+GET {{baseUrl}}/api/v1/topup/{{createTopUpA.response.body.topUpRequestId}}
+Authorization: Bearer {{loginUserA.response.body.accessToken}}
+
+### 3.5 Confirm Top Up User A (Saldo User A bertambah 500.000)
+POST {{baseUrl}}/api/v1/topup/7/confirm
+Authorization: Bearer {{loginUserA.response.body.accessToken}}
+
+### 3.6 Transfer dari User A ke Wallet User B (Tanpa SenderWalletId!)
+# @name transferAtoB
+POST {{baseUrl}}/api/transfers
+Authorization: Bearer {{loginUserA.response.body.accessToken}}
+Content-Type: application/json
+
+{
+  "receiverWalletNumber": "W-424592060439",
+  "amount": 150000,
+  "description": "Bayar makan siang"
+}
+
+# @txIdAtoB = {{transferAtoB.response.body.transactionId}}
+
+### 3.7 Cek Mutasi Saldo User A
+GET {{baseUrl}}/api/v1/wallets/me/mutations?page=1&pageSize=10
+Authorization: Bearer {{loginUserA.response.body.accessToken}}
+
+### 3.8 Cek Daftar Transaksi User A
+GET {{baseUrl}}/api/v1/wallets/me/transactions?page=1&pageSize=10
+Authorization: Bearer {{tokenA}}
+
+### 3.9 Cek Detail Transaksi Spesifik milik User A
+GET {{baseUrl}}/api/v1/wallets/me/transactions/{{txIdAtoB}}
+Authorization: Bearer {{tokenA}}
+
+
+### ==========================================
+### 4. UJI KEAMANAN (HARUS GAGAL: 401 & 403)
+### ==========================================
+
+### 4.1 Akses Wallet Tanpa Token -> Harus 401 Unauthorized
+GET {{baseUrl}}/api/v1/wallets/me
+
+### 4.2 User B mencoba melihat Top Up milik User A -> Harus 403 Forbidden
+GET {{baseUrl}}/api/v1/topups/{{topUpIdA}}
+Authorization: Bearer {{tokenB}}
+
+### 4.3 User B mencoba mengakses endpoint Admin -> Harus 403 Forbidden
+GET {{baseUrl}}/api/v1/admin/users
+Authorization: Bearer {{tokenB}}
+
+
+### ==========================================
+### 5. ADMIN USER MANAGEMENT (ADMIN ROLE)
+### ==========================================
+
+### 5.1 List Semua User (dengan search & pagination)
+GET {{baseUrl}}/api/v1/admin/users?search=budi&page=1&pageSize=10
+Authorization: Bearer {{tokenAdmin}}
+
+### 5.2 Detail User by ID (ganti 2 dengan ID user target)
+GET {{baseUrl}}/api/v1/admin/users/2
+Authorization: Bearer {{tokenAdmin}}
+
+### 5.3 Suspend / Aktifkan Akun User
+PATCH {{baseUrl}}/api/v1/admin/users/2/status
+Authorization: Bearer {{tokenAdmin}}
+Content-Type: application/json
+
+{
+  "status": "SUSPENDED"
+}
+
+### 5.4 Ubah Role User
+PUT {{baseUrl}}/api/v1/admin/users/2/role
+Authorization: Bearer {{tokenAdmin}}
+Content-Type: application/json
+
+{
+  "role": "ADMIN"
+}

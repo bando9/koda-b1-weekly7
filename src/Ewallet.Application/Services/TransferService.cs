@@ -10,7 +10,7 @@ namespace Ewallet.Application.Services;
 
 public interface ITransferService
 {
-    Task<TransferResponse> CreateAsync(CreateTransferRequest request, CancellationToken ct);
+    Task<TransferResponse> CreateAsync(long currentUserId,CreateTransferRequest request, CancellationToken ct);
 }
 
 
@@ -29,22 +29,25 @@ public sealed class TransferService(
     {
         public long? ActoreUserId {get; set;}
     }
-    public async Task<TransferResponse> CreateAsync(CreateTransferRequest request, CancellationToken ct)
+    public async Task<TransferResponse> CreateAsync(long currentUserId, CreateTransferRequest request, CancellationToken ct)
     {
         var now = time.GetUtcNow().UtcDateTime;
         var correlationId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString("N");
-        long? actorUserId = null;
+        long? senderWalletIdForAudit = null;
 
         await using var dbTx = await _db.Database.BeginTransactionAsync(ct);
 
         try
         {
-            var sender = await walletRepo.GetWalletByIdAsync(request.SenderWalletId, ct)
+            var sender = await walletRepo.GetByUserId(currentUserId, ct)
                 ?? throw new InvalidOperationException("Wallet pengirim tidak ditemukan.");
-            actorUserId = sender.UserId;
+            senderWalletIdForAudit = sender.Id;
 
             var receiver = await walletRepo.GetByWalletNumberAsync(request.ReceiverWalletNumber.Trim(), ct)
                 ?? throw new InvalidOperationException("Wallet penerima tidak ditemukan.");
+
+            if (sender.Id == receiver.Id)
+                throw new InvalidOperationException("Tidak dapat melakukan transfer ke wallet sendiri.");
 
             if (sender.Balance < request.Amount)
                 throw new InvalidOperationException("Saldo tidak mencukupi.");
@@ -122,10 +125,10 @@ public sealed class TransferService(
             await auditLogRepo.AddAsync(AuditLog.Create(
                 action: "TRANSFER_REJECTED",
                 entityType: "Wallet",
-                entityId: request.SenderWalletId.ToString(),
+                entityId:(senderWalletIdForAudit ?? 0).ToString(),
                 outcome: isBusinessRule ? OutcomeEnum.REJECTED : OutcomeEnum.FAILED,
                 description: reason,
-                actorUserId: actorUserId,
+                actorUserId: currentUserId,
                 transactionId: null,
                 correlationId: correlationId,
                 nowUtc: now), CancellationToken.None);

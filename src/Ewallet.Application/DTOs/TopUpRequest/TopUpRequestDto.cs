@@ -4,8 +4,7 @@ namespace Ewallet.Application.DTOs;
 
 public sealed record CreateTopUpRequest
 (
-    [Required(ErrorMessage = "Wallet ID wajib diisi.")]
-    long WalletId,
+    
     [Required(ErrorMessage = "Payment Method Id wajib diisi.")]
     long PaymentMethodId,
     [Required(ErrorMessage = "Nonimal topup wajib diisi.")]

@@ -12,6 +12,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.OpenApi;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +23,10 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.AddSingleton(TimeProvider.System);
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+});
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -221,7 +227,9 @@ if (app.Environment.IsDevelopment())
 
     app.MapScalarApiReference("/api",options => 
     {
-        options.Title = "Ewallet API";
+        options
+            .WithTitle("Ewallet API").WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
+            .AddPreferredSecuritySchemes("Bearer");;
     });
     
     app.MapGet("/", () => Results.Redirect("/api"));
@@ -235,6 +243,7 @@ app.UseRouting();
 app.UseCors("ReactClient");
 
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseRateLimiter();
@@ -249,3 +258,46 @@ app.MapControllerRoute(
 
 app.Run();
 
+
+internal sealed class BearerSecuritySchemeTransformer(
+    IAuthenticationSchemeProvider authenticationSchemeProvider) : IOpenApiDocumentTransformer
+{
+    public async Task TransformAsync(
+        OpenApiDocument document,
+        OpenApiDocumentTransformerContext context,
+        CancellationToken cancellationToken)
+    {
+        var authenticationSchemes = await authenticationSchemeProvider.GetAllSchemesAsync();
+        if (authenticationSchemes.Any(authScheme => authScheme.Name == "Bearer"))
+        {
+            var requirements = new Dictionary<string, IOpenApiSecurityScheme>
+            {
+                ["Bearer"] = new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    In = ParameterLocation.Header,
+                    BearerFormat = "JWT",
+                    Description = "Masukkan token JWT"
+                }
+            };
+
+            document.Components ??= new OpenApiComponents();
+            document.Components.SecuritySchemes = requirements;
+
+            foreach (var pathItem in document.Paths.Values)
+            {
+                if (pathItem.Operations is null) continue;
+
+                foreach (var operation in pathItem.Operations.Values)
+                {
+                    operation.Security ??= [];
+                    operation.Security.Add(new OpenApiSecurityRequirement
+                    {
+                        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+                    });
+                }
+            }
+        }
+    }
+}
