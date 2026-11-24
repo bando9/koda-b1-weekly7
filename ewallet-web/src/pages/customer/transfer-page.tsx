@@ -1,259 +1,407 @@
-import { useState } from "react"
-import { ArrowLeft } from "lucide-react"
+import { useMemo, useState, type FormEvent } from "react"
+import { AlertCircle, Check, CheckCircle2, Loader2 } from "lucide-react"
+import { useOutletContext } from "react-router"
+
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
+import { formatToRupiah } from "@/utils"
 
-const NAV_ITEMS = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "topup", label: "Top Up" },
-  { id: "transfer", label: "Transfer" },
-  { id: "transactions", label: "Transactions" },
-  { id: "profile", label: "Profile" },
-  { id: "logout", label: "Logout" },
-]
-
-function KodaLogo({ className = "" }) {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 28 28"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={`shrink-0 ${className}`}
-    >
-      <rect
-        x="14"
-        y="2.12132"
-        width="16.8"
-        height="16.8"
-        rx="1.5"
-        transform="rotate(45 14 2.12132)"
-        stroke="currentColor"
-        strokeWidth="2.4"
-      />
-      <rect
-        x="14"
-        y="9.75736"
-        width="6"
-        height="6"
-        rx="0.5"
-        transform="rotate(45 14 9.75736)"
-        fill="currentColor"
-      />
-    </svg>
-  )
+interface CustomerLayoutContext {
+  displayName: string
+  initials: string
 }
 
-export default function TransferPage({ onBack }) {
-  const [activeNav, setActiveNav] = useState("transfer")
-  const [recipientQuery, setRecipientQuery] = useState("")
-  const [amount, setAmount] = useState("")
-  const [note, setNote] = useState("")
+interface RecipientUser {
+  id: string
+  name: string
+  username: string
+  walletNumber: string
+  initials: string
+}
 
-  const selectedRecipient = {
-    initials: "BP",
+// Data contoh pengguna untuk pencarian penerima
+const MOCK_RECIPIENTS: RecipientUser[] = [
+  {
+    id: "usr-1",
     name: "Bima Pratama",
-    walletId: "KW-****-2941",
+    username: "bima",
+    walletNumber: "KW •••• 2941",
+    initials: "BP",
+  },
+  {
+    id: "usr-2",
+    name: "Rina Wulandari",
+    username: "rina",
+    walletNumber: "KW •••• 5108",
+    initials: "RW",
+  },
+]
+
+function formatRupiah(amount: number): string {
+  return new Intl.NumberFormat("id-ID").format(amount)
+}
+
+export default function TransferPage() {
+  const context = useOutletContext<CustomerLayoutContext | undefined>()
+  const displayName = context?.displayName ?? "Nadia"
+  const initials = context?.initials ?? "NP"
+
+  // State simulasi saldo tersedia
+  const [availableBalance, setAvailableBalance] = useState<number>(1250000)
+
+  // State form transfer (default disesuaikan dengan gambar)
+  const [recipientQuery, setRecipientQuery] = useState<string>("bima")
+  const [rawAmount, setRawAmount] = useState<string>("75000")
+  const [note, setNote] = useState<string>("Bayar makan siang")
+
+  // State UI & modal tinjauan
+  const [isReviewOpen, setIsReviewOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const numericAmount = Number(rawAmount) || 0
+
+  // Cari penerima berdasarkan username atau nomor dompet
+  const matchedRecipient = useMemo(() => {
+    const query = recipientQuery.trim().toLowerCase().replace(/^@/, "")
+    if (!query) return null
+
+    return (
+      MOCK_RECIPIENTS.find(
+        (u) =>
+          u.username.toLowerCase().includes(query) ||
+          u.walletNumber.toLowerCase().includes(query) ||
+          u.name.toLowerCase().includes(query)
+      ) ?? null
+    )
+  }, [recipientQuery])
+
+  const handleAmountChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, "")
+    setRawAmount(digitsOnly)
+    if (errorMessage) setErrorMessage(null)
+    if (successMessage) setSuccessMessage(null)
   }
 
-  const handleSubmit = (e) => {
+  const handleOpenReview = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    console.log({
-      recipient: selectedRecipient,
-      amount: amount || "75000",
-      note: note || "Bayar makan siang",
-    })
+    setErrorMessage(null)
+    setSuccessMessage(null)
+
+    if (!matchedRecipient) {
+      setErrorMessage(
+        "Penerima tidak ditemukan. Periksa username atau nomor dompet."
+      )
+      return
+    }
+
+    if (numericAmount < 1000) {
+      setErrorMessage("Minimal nominal transfer adalah Rp 1.000.")
+      return
+    }
+
+    if (numericAmount > availableBalance) {
+      setErrorMessage("Saldo tersedia tidak mencukupi untuk transaksi ini.")
+      return
+    }
+
+    setIsReviewOpen(true)
+  }
+
+  const handleConfirmTransfer = async () => {
+    if (!matchedRecipient) return
+
+    setIsSubmitting(true)
+    try {
+      // Simulasi API transfer
+      await new Promise((resolve) => setTimeout(resolve, 600))
+
+      setAvailableBalance((prev) => prev - numericAmount)
+      setSuccessMessage(
+        `Transfer sebesar ${formatToRupiah(numericAmount)} ke ${matchedRecipient.name} berhasil dikirim.`
+      )
+      setIsReviewOpen(false)
+    } catch {
+      setErrorMessage("Gagal memproses transfer. Silakan coba lagi.")
+      setIsReviewOpen(false)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#F8FAFC] font-sans antialiased md:flex md:bg-[#F5F7FA]">
-      <aside className="hidden bg-[#0F172A] px-4 py-7 text-white md:flex md:w-[240px] md:shrink-0 md:flex-col">
-        <div className="mb-8 flex items-center gap-2.5 px-3">
-          <KodaLogo className="text-white" />
-          <span className="text-[20px] font-bold tracking-tight">
-            KodaWallet
+    <div className="space-y-8">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-[#135D54] uppercase">
+            TRANSAKSI
+          </p>
+          <h1 className="mb-1.5 text-3xl font-bold tracking-tight text-[#1E293B]">
+            Transfer saldo
+          </h1>
+          <p className="text-sm text-[#64748B]">
+            Kirim saldo dengan aman ke pengguna KodaWallet lain.
+          </p>
+        </div>
+
+        <div className="hidden items-center gap-3 rounded-full bg-white py-2 pr-5 pl-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] lg:flex">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="bg-[#135D54] text-xs font-semibold text-white">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-sm font-semibold text-[#1E293B]">
+            {displayName}
           </span>
         </div>
+      </div>
 
-        <p className="mb-3 px-3 text-[11px] font-semibold tracking-wider text-[#64748B] uppercase">
-          PERSONAL WALLET
-        </p>
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        <Card className="rounded-3xl border-0 bg-white shadow-none lg:col-span-8">
+          <CardContent className="p-7 sm:p-9">
+            <h2 className="mb-6 text-lg font-bold text-[#1E293B]">
+              Detail transfer
+            </h2>
 
-        <nav className="space-y-1.5">
-          {NAV_ITEMS.map((item) => {
-            const isActive = activeNav === item.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveNav(item.id)}
-                className={`w-full cursor-pointer rounded-xl px-3.5 py-2.5 text-left text-sm transition-colors ${
-                  isActive
-                    ? "bg-[#1E40AF] font-semibold text-white"
-                    : "font-medium text-[#CBD5E1] hover:bg-white/5 hover:text-white"
-                }`}
+            {errorMessage && (
+              <Alert
+                variant="destructive"
+                className="mb-6 rounded-xl border-red-200 bg-red-50 text-red-700"
               >
-                {item.label}
-              </button>
-            )
-          })}
-        </nav>
-      </aside>
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-xs font-medium">
+                  {errorMessage}
+                </AlertDescription>
+              </Alert>
+            )}
 
-      <main className="flex w-full flex-1 justify-center md:block">
-        <div className="flex min-h-screen w-full max-w-[430px] flex-col px-6 py-8 md:min-h-0 md:max-w-[1160px] md:px-10 md:py-9">
-          <header className="mb-8 flex items-center justify-between md:items-start">
-            <div className="flex items-center gap-3.5 md:block">
-              <button
-                type="button"
-                onClick={onBack}
-                aria-label="Kembali"
-                className="cursor-pointer text-[#0F172A] transition-opacity hover:opacity-75 md:hidden"
-              >
-                <ArrowLeft className="h-5 w-5 stroke-[2.4]" />
-              </button>
+            {successMessage && (
+              <Alert className="mb-6 rounded-xl border-emerald-200 bg-emerald-50 text-emerald-800">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <AlertDescription className="text-xs font-medium">
+                  {successMessage}
+                </AlertDescription>
+              </Alert>
+            )}
 
-              <div>
-                <h1 className="text-[20px] font-bold tracking-tight text-[#0F172A] md:mb-1 md:text-[28px]">
-                  Transfer Saldo
-                </h1>
-                <p className="hidden text-sm text-[#64748B] md:block">
-                  Kirim uang ke pengguna KodaWallet lainnya.
+            <form onSubmit={handleOpenReview} className="space-y-6">
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold tracking-wider text-[#64748B] uppercase">
+                  PENERIMA
                 </p>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="recipient-search"
+                    className="text-xs font-medium text-[#64748B]"
+                  >
+                    Cari username / nomor dompet
+                  </Label>
+                  <Input
+                    id="recipient-search"
+                    type="text"
+                    value={recipientQuery}
+                    onChange={(e) => {
+                      setRecipientQuery(e.target.value)
+                      if (errorMessage) setErrorMessage(null)
+                      if (successMessage) setSuccessMessage(null)
+                    }}
+                    placeholder="Masukkan username atau nomor dompet"
+                    className="h-11 rounded-xl border-transparent bg-transparent px-3 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
+                  />
+                </div>
+
+                {matchedRecipient && (
+                  <div className="flex items-center justify-between rounded-2xl bg-[#EDF5F3] px-5 py-4">
+                    <div className="flex items-center gap-3.5">
+                      <Avatar className="h-11 w-11">
+                        <AvatarFallback className="bg-[#135D54] text-sm font-semibold text-white">
+                          {matchedRecipient.initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-bold text-[#1E293B]">
+                          {matchedRecipient.name}
+                        </p>
+                        <p className="mt-0.5 text-xs text-[#64748B]">
+                          @{matchedRecipient.username} &nbsp;·&nbsp;{" "}
+                          {matchedRecipient.walletNumber}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Check className="h-5 w-5 text-[#135D54]" />
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="transfer-amount"
+                  className="text-xs font-medium text-[#64748B]"
+                >
+                  Nominal transfer
+                </Label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm font-medium text-[#1E293B]">
+                    Rp
+                  </span>
+                  <Input
+                    id="transfer-amount"
+                    type="text"
+                    inputMode="numeric"
+                    value={rawAmount ? formatRupiah(numericAmount) : ""}
+                    onChange={(e) => handleAmountChange(e.target.value)}
+                    placeholder="0"
+                    className="h-11 rounded-xl border-transparent bg-transparent pl-9 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="transfer-note"
+                  className="text-xs font-medium text-[#64748B]"
+                >
+                  Catatan (opsional)
+                </Label>
+                <Input
+                  id="transfer-note"
+                  type="text"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Tulis catatan untuk penerima"
+                  className="h-11 rounded-xl border-transparent bg-transparent px-3 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
+                />
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  type="submit"
+                  className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#135D54] px-5 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99]"
+                >
+                  Tinjau transfer
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-3xl border-0 bg-white shadow-none lg:col-span-4">
+          <CardContent className="p-7 sm:p-8">
+            <h2 className="mb-6 text-lg font-bold text-[#1E293B]">
+              Dompet saya
+            </h2>
+
+            <div className="border-b border-slate-100 pb-6">
+              <p className="mb-2 text-xs text-[#64748B]">Saldo tersedia</p>
+              <p className="text-[28px] font-bold tracking-tight text-[#1E293B]">
+                {formatToRupiah(availableBalance)}
+              </p>
+            </div>
+
+            <p className="pt-5 text-xs leading-relaxed text-[#64748B]">
+              Pastikan penerima dan nominal sudah benar sebelum melanjutkan.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+        <DialogContent className="rounded-2xl sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#1E293B]">
+              Tinjau transfer
+            </DialogTitle>
+            <DialogDescription className="text-xs text-[#64748B]">
+              Periksa kembali detail penerima dan nominal sebelum mengirim
+              saldo.
+            </DialogDescription>
+          </DialogHeader>
+
+          {matchedRecipient && (
+            <div className="space-y-4 py-2 text-sm">
+              <div className="flex items-center gap-3 rounded-xl bg-[#EDF5F3] p-3.5">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-[#135D54] text-xs font-semibold text-white">
+                    {matchedRecipient.initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-bold text-[#1E293B]">
+                    {matchedRecipient.name}
+                  </p>
+                  <p className="text-xs text-[#64748B]">
+                    @{matchedRecipient.username} ·{" "}
+                    {matchedRecipient.walletNumber}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 rounded-xl border border-slate-100 p-4 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-[#64748B]">Nominal transfer</span>
+                  <span className="font-bold text-[#1E293B]">
+                    {formatToRupiah(numericAmount)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#64748B]">Biaya transaksi</span>
+                  <span className="font-semibold text-[#135D54]">Gratis</span>
+                </div>
+                {note.trim() && (
+                  <div className="flex justify-between gap-4 border-t border-slate-100 pt-2.5">
+                    <span className="text-[#64748B]">Catatan</span>
+                    <span className="text-right font-medium text-[#1E293B]">
+                      {note}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
+          )}
 
-            <div className="hidden items-center gap-2.5 rounded-full bg-white px-4 py-2 md:flex">
-              <span className="text-xs font-bold text-[#0F172A]">NP</span>
-              <span className="text-xs font-semibold text-[#0F172A]">
-                Nadia
-              </span>
-            </div>
-          </header>
-
-          <section className="mb-8 md:hidden">
-            <p className="mb-2 text-xs font-medium text-[#64748B]">
-              Saldo tersedia
-            </p>
-            <p className="text-[28px] leading-none font-bold tracking-tight text-[#1D61E7]">
-              Rp1.250.000
-            </p>
-          </section>
-          <div className="flex flex-1 flex-col md:grid md:grid-cols-12 md:items-start md:gap-6">
-            <div className="flex flex-1 flex-col md:col-span-8 md:rounded-3xl md:bg-white md:p-8">
-              <h2 className="mb-6 hidden text-[20px] font-bold tracking-tight text-[#0F172A] md:block">
-                Buat Transfer
-              </h2>
-
-              <form onSubmit={handleSubmit} className="flex flex-1 flex-col">
-                <div className="space-y-6">
-                  <div>
-                    <Label
-                      htmlFor="recipient"
-                      className="mb-2 block text-xs font-semibold text-[#64748B]"
-                    >
-                      <span className="md:hidden">Penerima</span>
-                      <span className="hidden md:inline">Cari penerima</span>
-                    </Label>
-                    <Input
-                      id="recipient"
-                      type="text"
-                      value={recipientQuery}
-                      onChange={(e) => setRecipientQuery(e.target.value)}
-                      placeholder="Username / nomor wallet"
-                      className="h-12 rounded-xl border-0 bg-white px-4 text-sm text-[#0F172A] shadow-none ring-0 placeholder:text-[#64748B] focus-visible:ring-2 focus-visible:ring-[#1D61E7] md:bg-[#F1F5F9] md:focus-visible:bg-white"
-                    />
-                  </div>
-
-                  <Card className="rounded-2xl border-0 bg-[#EEF4FF] px-5 py-4 shadow-none ring-0">
-                    <CardContent className="p-0">
-                      <p className="mb-1 flex items-center gap-2.5 text-sm font-bold text-[#0F172A]">
-                        <span className="hidden text-xs font-bold text-[#0F172A] md:inline">
-                          {selectedRecipient.initials}
-                        </span>
-                        <span>{selectedRecipient.name}</span>
-                      </p>
-                      <p className="text-xs font-medium text-[#64748B]">
-                        <span className="md:hidden">
-                          {selectedRecipient.walletId}
-                        </span>
-                        <span className="hidden md:inline">
-                          Wallet: {selectedRecipient.walletId}
-                        </span>
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  <div>
-                    <Label
-                      htmlFor="amount"
-                      className="mb-2 block text-xs font-semibold text-[#64748B]"
-                    >
-                      <span className="md:hidden">Nominal</span>
-                      <span className="hidden md:inline">Nominal transfer</span>
-                    </Label>
-                    <Input
-                      id="amount"
-                      type="text"
-                      inputMode="numeric"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      placeholder="Rp 75.000"
-                      className="h-12 rounded-xl border-0 bg-white px-4 text-sm text-[#0F172A] shadow-none ring-0 placeholder:text-[#64748B] focus-visible:ring-2 focus-visible:ring-[#1D61E7] md:bg-[#F1F5F9] md:focus-visible:bg-white"
-                    />
-                  </div>
-
-                  <div>
-                    <Label
-                      htmlFor="note"
-                      className="mb-2 block text-xs font-semibold text-[#64748B]"
-                    >
-                      <span className="md:hidden">Catatan</span>
-                      <span className="hidden md:inline">
-                        Catatan (opsional)
-                      </span>
-                    </Label>
-                    <Input
-                      id="note"
-                      type="text"
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      placeholder="Bayar makan siang"
-                      className="h-12 rounded-xl border-0 bg-white px-4 text-sm text-[#0F172A] shadow-none ring-0 placeholder:text-[#64748B] focus-visible:ring-2 focus-visible:ring-[#1D61E7] md:bg-[#F1F5F9] md:focus-visible:bg-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-10 md:mt-8">
-                  <Button
-                    type="submit"
-                    className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#1D61E7] px-5 text-sm font-semibold text-white shadow-none hover:bg-[#1652C8]"
-                  >
-                    Tinjau Transfer
-                  </Button>
-                </div>
-              </form>
-            </div>
-
-            <Card className="hidden rounded-3xl border-0 bg-white p-7 shadow-none ring-0 md:col-span-4 md:block">
-              <CardContent className="p-0">
-                <p className="mb-3 text-xs font-medium text-[#64748B]">
-                  Saldo Tersedia
-                </p>
-                <p className="mb-6 text-[28px] leading-none font-bold tracking-tight text-[#0F172A]">
-                  Rp1.250.000
-                </p>
-                <p className="max-w-[200px] text-xs leading-relaxed text-[#64748B]">
-                  Transfer hanya diproses setelah konfirmasi.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </main>
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={isSubmitting}
+              onClick={() => setIsReviewOpen(false)}
+              className="rounded-xl text-xs font-semibold text-[#64748B]"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleConfirmTransfer}
+              className="rounded-xl bg-[#135D54] text-xs font-semibold text-white hover:bg-[#0F4C44]"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Mengirim...</span>
+                </span>
+              ) : (
+                "Kirim sekarang"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

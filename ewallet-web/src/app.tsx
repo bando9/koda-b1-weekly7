@@ -10,6 +10,7 @@ import AdminUserManagementPage from "./layouts/admin-dashboard"
 import CustomerLayout from "./layouts/customer-layout"
 import CustomerDashboardPage from "./pages/customer/dashboard"
 import TopUpPage from "./pages/customer/top-up-page"
+import TransferPage from "./pages/customer/transfer-page"
 
 export function App() {
   return (
@@ -44,7 +45,8 @@ export function App() {
       >
         <Route index element={<CustomerDashboardPage />} />
         <Route path="top-up" element={<TopUpPage />} />
-        {/* topup, transfer, activity, profile */}
+        <Route path="transfer" element={<TransferPage />} />
+        {/* activity, profile */}
       </Route>
 
       <Route
