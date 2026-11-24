@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
+import { RefreshCw } from "lucide-react"
 import { useOutletContext } from "react-router"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -13,149 +15,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+// import type { UserProfileDto } from "
+import {
+  dashboardService,
+  type TransactionDto,
+  type UserProfileDto,
+} from "@/service/dashboard-service"
 
 interface CustomerLayoutContext {
   displayName: string
   initials: string
 }
-
-type TransactionType = "TOP UP" | "TRANSFER"
-type TransactionDirection = "IN" | "OUT"
-type TransactionStatus = "Berhasil" | "Diproses" | "Gagal"
-
-interface ActivityTransaction {
-  id: string
-  title: string
-  referenceNumber: string
-  type: TransactionType
-  direction: TransactionDirection
-  amount: number
-  status: TransactionStatus
-  dateRangeGroup: "7d" | "30d" | "90d"
-}
-
-const MOCK_ACTIVITIES: ActivityTransaction[] = [
-  {
-    id: "act-1",
-    title: "Top up melalui QRIS",
-    referenceNumber: "TRX-20261117-1051",
-    type: "TOP UP",
-    direction: "IN",
-    amount: 250000,
-    status: "Berhasil",
-    dateRangeGroup: "7d",
-  },
-  {
-    id: "act-2",
-    title: "Transfer ke Bima Pratama",
-    referenceNumber: "TRX-20261116-1037",
-    type: "TRANSFER",
-    direction: "OUT",
-    amount: 75000,
-    status: "Berhasil",
-    dateRangeGroup: "7d",
-  },
-  {
-    id: "act-3",
-    title: "Transfer dari Rina",
-    referenceNumber: "TRX-20261115-1004",
-    type: "TRANSFER",
-    direction: "IN",
-    amount: 120000,
-    status: "Berhasil",
-    dateRangeGroup: "7d",
-  },
-  {
-    id: "act-4",
-    title: "Isi saldo melalui bank",
-    referenceNumber: "TRX-20261114-1012",
-    type: "TOP UP",
-    direction: "IN",
-    amount: 500000,
-    status: "Berhasil",
-    dateRangeGroup: "7d",
-  },
-  {
-    id: "act-5",
-    title: "Transfer ke Dimas Saputra",
-    referenceNumber: "TRX-20261110-0988",
-    type: "TRANSFER",
-    direction: "OUT",
-    amount: 150000,
-    status: "Berhasil",
-    dateRangeGroup: "30d",
-  },
-  {
-    id: "act-6",
-    title: "Top up melalui QRIS",
-    referenceNumber: "TRX-20261108-0942",
-    type: "TOP UP",
-    direction: "IN",
-    amount: 300000,
-    status: "Berhasil",
-    dateRangeGroup: "30d",
-  },
-  {
-    id: "act-7",
-    title: "Transfer dari Sari",
-    referenceNumber: "TRX-20261105-0915",
-    type: "TRANSFER",
-    direction: "IN",
-    amount: 85000,
-    status: "Berhasil",
-    dateRangeGroup: "30d",
-  },
-  {
-    id: "act-8",
-    title: "Isi saldo melalui bank",
-    referenceNumber: "TRX-20261102-0871",
-    type: "TOP UP",
-    direction: "IN",
-    amount: 400000,
-    status: "Berhasil",
-    dateRangeGroup: "30d",
-  },
-  {
-    id: "act-9",
-    title: "Transfer ke Andi Wijaya",
-    referenceNumber: "TRX-20261028-0810",
-    type: "TRANSFER",
-    direction: "OUT",
-    amount: 210000,
-    status: "Berhasil",
-    dateRangeGroup: "90d",
-  },
-  {
-    id: "act-10",
-    title: "Top up melalui QRIS",
-    referenceNumber: "TRX-20261024-0794",
-    type: "TOP UP",
-    direction: "IN",
-    amount: 100000,
-    status: "Berhasil",
-    dateRangeGroup: "90d",
-  },
-  {
-    id: "act-11",
-    title: "Transfer ke Bima Pratama",
-    referenceNumber: "TRX-20261020-0752",
-    type: "TRANSFER",
-    direction: "OUT",
-    amount: 50000,
-    status: "Berhasil",
-    dateRangeGroup: "90d",
-  },
-  {
-    id: "act-12",
-    title: "Isi saldo melalui bank",
-    referenceNumber: "TRX-20261015-0719",
-    type: "TOP UP",
-    direction: "IN",
-    amount: 750000,
-    status: "Berhasil",
-    dateRangeGroup: "90d",
-  },
-]
 
 const ITEMS_PER_PAGE = 4
 
@@ -163,58 +33,167 @@ function formatRupiah(amount: number): string {
   return new Intl.NumberFormat("id-ID").format(amount)
 }
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 0 || !parts[0]) return "U"
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+function formatDateTime(isoString: string): string {
+  const date = new Date(isoString)
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)
+}
+
+function mapTransactionTypeLabel(type: string): string {
+  switch (type.toUpperCase()) {
+    case "TOPUP":
+      return "TOP UP"
+    case "TRANSFER":
+      return "TRANSFER"
+    default:
+      return type.toUpperCase()
+  }
+}
+
+function mapStatusLabel(status: string): "Berhasil" | "Diproses" | "Gagal" {
+  switch (status.toUpperCase()) {
+    case "SUCCESS":
+      return "Berhasil"
+    case "PENDING":
+      return "Diproses"
+    default:
+      return "Gagal"
+  }
+}
+
 export default function ActivitiesPage() {
   const context = useOutletContext<CustomerLayoutContext | undefined>()
-  const displayName = context?.displayName ?? "Nadia"
-  const initials = context?.initials ?? "NP"
+
+  const [profile, setProfile] = useState<UserProfileDto | null>(null)
+  const [transactions, setTransactions] = useState<TransactionDto[]>([])
+  const [totalCount, setTotalCount] = useState<number>(0)
 
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [selectedType, setSelectedType] = useState<string>("all")
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
   const [selectedDateRange, setSelectedDateRange] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState<number>(1)
 
-  const filteredTransactions = useMemo(() => {
-    return MOCK_ACTIVITIES.filter((item) => {
-      const q = searchQuery.trim().toLowerCase()
-      const matchesSearch =
-        !q ||
-        item.referenceNumber.toLowerCase().includes(q) ||
-        item.title.toLowerCase().includes(q)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState<number>(0)
 
-      const matchesType = selectedType === "all" || item.type === selectedType
+  // Debounce search input 350ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
-      const matchesStatus =
-        selectedStatus === "all" || item.status === selectedStatus
+  // Ambil profil jika context dari layout belum tersedia
+  useEffect(() => {
+    if (context?.displayName) return
+    let isCancelled = false
 
-      const matchesDate =
-        selectedDateRange === "all" ||
-        (selectedDateRange === "7d" && item.dateRangeGroup === "7d") ||
-        (selectedDateRange === "30d" &&
-          (item.dateRangeGroup === "7d" || item.dateRangeGroup === "30d")) ||
-        selectedDateRange === "90d"
+    dashboardService
+      .getProfile()
+      .then((res) => {
+        if (!isCancelled) setProfile(res)
+      })
+      .catch(() => {
+        // Fallback ke default jika gagal
+      })
 
-      return matchesSearch && matchesType && matchesStatus && matchesDate
-    })
-  }, [searchQuery, selectedType, selectedStatus, selectedDateRange])
+    return () => {
+      isCancelled = true
+    }
+  }, [context?.displayName])
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE)
-  )
+  // Fetch daftar transaksi dari backend setiap filter/halaman berubah
+  useEffect(() => {
+    let isCancelled = false
 
+    async function fetchActivities() {
+      try {
+        const daysMap: Record<string, number | undefined> = {
+          all: undefined,
+          "7d": 7,
+          "30d": 30,
+          "90d": 90,
+        }
+
+        const res = await dashboardService.getTransactions({
+          search: debouncedSearch,
+          type: selectedType,
+          status: selectedStatus,
+          days: daysMap[selectedDateRange],
+          page: currentPage,
+          pageSize: ITEMS_PER_PAGE,
+        })
+
+        if (!isCancelled) {
+          setTransactions(res.items)
+          setTotalCount(res.totalCount)
+          setError(null)
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Gagal memuat riwayat transaksi."
+          )
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    fetchActivities()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [
+    debouncedSearch,
+    selectedType,
+    selectedStatus,
+    selectedDateRange,
+    currentPage,
+    refreshKey,
+  ])
+
+  const displayName = profile?.fullName ?? context?.displayName ?? "Pengguna"
+  const initials = profile?.fullName
+    ? getInitials(profile.fullName)
+    : (context?.initials ?? "U")
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE))
   const safeCurrentPage = Math.min(currentPage, totalPages)
 
-  const paginatedTransactions = useMemo(() => {
-    const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE
-    return filteredTransactions.slice(startIndex, startIndex + ITEMS_PER_PAGE)
-  }, [filteredTransactions, safeCurrentPage])
-
   const handleFilterChange =
-    (setter: (val: string) => void) => (val: string) => {
-      setter(val)
+    (setter: (val: string) => void) => (val: string | null) => {
+      setIsLoading(true)
+      setter(val ?? "all")
       setCurrentPage(1)
     }
+
+  const handleRetry = () => {
+    setIsLoading(true)
+    setError(null)
+    setRefreshKey((prev) => prev + 1)
+  }
 
   return (
     <div className="space-y-8">
@@ -243,6 +222,21 @@ export default function ActivitiesPage() {
         </div>
       </div>
 
+      {error && (
+        <div className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+          <span>{error}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRetry}
+            className="gap-1.5 border-red-200 bg-white text-red-700 hover:bg-red-100"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Coba Lagi
+          </Button>
+        </div>
+      )}
+
       <Card className="rounded-3xl border-0 bg-white shadow-none">
         <CardContent className="p-7 sm:p-9">
           <h2 className="mb-6 text-lg font-bold text-[#1E293B]">
@@ -255,10 +249,11 @@ export default function ActivitiesPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => {
+                  setIsLoading(true)
                   setSearchQuery(e.target.value)
                   setCurrentPage(1)
                 }}
-                placeholder="Cari nomor referensi..."
+                placeholder="Cari nomor referensi atau deskripsi..."
                 className="h-11 rounded-xl border-0 bg-[#F5F7F6] px-4 text-xs text-[#1E293B] shadow-none placeholder:text-[#94A3B8] focus-visible:ring-1 focus-visible:ring-[#135D54]"
               />
             </div>
@@ -275,7 +270,7 @@ export default function ActivitiesPage() {
                   <SelectItem value="all" className="text-xs">
                     Semua tipe
                   </SelectItem>
-                  <SelectItem value="TOP UP" className="text-xs">
+                  <SelectItem value="TOPUP" className="text-xs">
                     Top up
                   </SelectItem>
                   <SelectItem value="TRANSFER" className="text-xs">
@@ -297,13 +292,13 @@ export default function ActivitiesPage() {
                   <SelectItem value="all" className="text-xs">
                     Semua status
                   </SelectItem>
-                  <SelectItem value="Berhasil" className="text-xs">
+                  <SelectItem value="SUCCESS" className="text-xs">
                     Berhasil
                   </SelectItem>
-                  <SelectItem value="Diproses" className="text-xs">
+                  <SelectItem value="PENDING" className="text-xs">
                     Diproses
                   </SelectItem>
-                  <SelectItem value="Gagal" className="text-xs">
+                  <SelectItem value="FAILED" className="text-xs">
                     Gagal
                   </SelectItem>
                 </SelectContent>
@@ -343,7 +338,16 @@ export default function ActivitiesPage() {
             <div className="col-span-2 text-right">STATUS</div>
           </div>
 
-          {paginatedTransactions.length === 0 ? (
+          {isLoading ? (
+            <div className="space-y-4 py-6">
+              {[1, 2, 3, 4].map((n) => (
+                <div
+                  key={n}
+                  className="h-14 w-full animate-pulse rounded-xl bg-slate-100"
+                />
+              ))}
+            </div>
+          ) : transactions.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-sm font-medium text-[#64748B]">
                 Tidak ada transaksi yang sesuai dengan filter.
@@ -351,8 +355,13 @@ export default function ActivitiesPage() {
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {paginatedTransactions.map((tx) => {
+              {transactions.map((tx) => {
                 const isIncoming = tx.direction === "IN"
+                const statusLabel = mapStatusLabel(tx.status)
+                const title =
+                  tx.description ||
+                  (tx.type === "TOPUP" ? "Top up saldo" : "Transfer dana")
+
                 return (
                   <div
                     key={tx.id}
@@ -360,16 +369,17 @@ export default function ActivitiesPage() {
                   >
                     <div className="sm:col-span-5">
                       <p className="text-sm font-bold text-[#1E293B]">
-                        {tx.title}
+                        {title}
                       </p>
                       <p className="mt-1 text-[11px] font-medium text-[#94A3B8]">
-                        {tx.referenceNumber}
+                        {tx.referenceNo} &nbsp;·&nbsp;{" "}
+                        {formatDateTime(tx.createdAtUtc)}
                       </p>
                     </div>
 
                     <div className="sm:col-span-3">
                       <span className="text-[11px] font-medium tracking-wide text-[#64748B] uppercase">
-                        {tx.type}
+                        {mapTransactionTypeLabel(tx.type)}
                       </span>
                     </div>
 
@@ -383,15 +393,15 @@ export default function ActivitiesPage() {
                       <Badge
                         className={cn(
                           "rounded-full px-3.5 py-1 text-[11px] font-semibold shadow-none",
-                          tx.status === "Berhasil" &&
+                          statusLabel === "Berhasil" &&
                             "bg-[#E6F4EE] text-[#135D54] hover:bg-[#E6F4EE]",
-                          tx.status === "Diproses" &&
+                          statusLabel === "Diproses" &&
                             "bg-amber-50 text-amber-700 hover:bg-amber-50",
-                          tx.status === "Gagal" &&
+                          statusLabel === "Gagal" &&
                             "bg-red-50 text-red-700 hover:bg-red-50"
                         )}
                       >
-                        {tx.status}
+                        {statusLabel}
                       </Badge>
                     </div>
                   </div>
@@ -402,8 +412,7 @@ export default function ActivitiesPage() {
 
           <div className="mt-7 flex flex-col items-center justify-between gap-4 pt-2 sm:flex-row">
             <p className="text-xs text-[#64748B]">
-              Menampilkan {paginatedTransactions.length} dari{" "}
-              {filteredTransactions.length} transaksi
+              Menampilkan {transactions.length} dari {totalCount} transaksi
             </p>
 
             <div className="inline-flex items-center gap-1.5 rounded-xl bg-[#EDF5F3] px-4 py-2.5 text-xs">
@@ -417,7 +426,10 @@ export default function ActivitiesPage() {
                     )}
                     <button
                       type="button"
-                      onClick={() => setCurrentPage(page)}
+                      onClick={() => {
+                        setIsLoading(true)
+                        setCurrentPage(page)
+                      }}
                       className={cn(
                         "cursor-pointer px-1 transition-colors",
                         isActive
@@ -434,9 +446,10 @@ export default function ActivitiesPage() {
               <button
                 type="button"
                 disabled={safeCurrentPage >= totalPages}
-                onClick={() =>
+                onClick={() => {
+                  setIsLoading(true)
                   setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                }
+                }}
                 aria-label="Halaman berikutnya"
                 className="ml-1 cursor-pointer text-[#135D54] transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-35"
               >

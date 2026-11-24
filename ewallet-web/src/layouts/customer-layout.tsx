@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Menu } from "lucide-react"
 import { Link, NavLink, Outlet, useNavigate } from "react-router"
 
@@ -12,11 +12,22 @@ import {
 } from "@/components/ui/sheet"
 import UseAuth from "@/hooks/use-auth"
 import { cn } from "@/lib/utils"
+import {
+  dashboardService,
+  type UserProfileDto,
+} from "@/service/dashboard-service"
 
 interface NavItem {
   label: string
   to: string
   end?: boolean
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 0 || !parts[0]) return "U"
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -105,15 +116,41 @@ export default function CustomerLayout() {
   const navigate = useNavigate()
   const { user, logout } = UseAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [profile, setProfile] = useState<UserProfileDto | null>(null)
 
-  const displayName = user?.name || "Nadia"
-  const initials =
-    displayName
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "NP"
+  useEffect(() => {
+    let isCancelled = false
+
+    dashboardService
+      .getProfile()
+      .then((res) => {
+        if (!isCancelled) {
+          setProfile(res)
+        }
+      })
+      .catch(() => {
+        // Fallback ke data dari UseAuth() jika request gagal
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
+  // Prioritaskan fullName dari backend (/api/v1/profile), lalu dari AuthContext
+  const authUser = user as {
+    fullName?: string
+    name?: string
+    userName?: string
+  } | null
+  const displayName =
+    profile?.fullName ||
+    authUser?.fullName ||
+    authUser?.name ||
+    authUser?.userName ||
+    "Pengguna"
+
+  const initials = getInitials(displayName)
 
   const handleLogout = async () => {
     await logout?.()
