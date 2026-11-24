@@ -132,7 +132,7 @@ export const loginUser = async ({
   identifier,
   password,
 }: LoginPayload): Promise<AuthSessionResponse> => {
-  const data = await apiRequest<unknown>("/api/v1/auth/login", {
+  const data = await apiRequest<unknown>("/auth/login", {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -145,7 +145,7 @@ export const loginUser = async ({
 export const registerUser = async (
   payload: RegisterPayload
 ): Promise<AuthUserResponse> => {
-  return apiRequest<AuthUserResponse>("/api/v1/auth/register", {
+  return apiRequest<AuthUserResponse>("/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -161,7 +161,7 @@ export const registerUser = async (
 let refreshInFlight: Promise<AuthSessionResponse> | null = null
 
 export const refreshSession = (): Promise<AuthSessionResponse> => {
-  refreshInFlight ??= apiRequest<unknown>("/api/v1/auth/refresh", {
+  refreshInFlight ??= apiRequest<unknown>("/auth/refresh", {
     method: "POST",
     credentials: "include",
   })
@@ -180,13 +180,13 @@ export const getCurrentUser = async (
     throw new ApiError(401, "Access Token tidak tersedia.")
   }
 
-  return apiRequest<CurrentUserResponse>("/api/v1/auth/me", {
+  return apiRequest<CurrentUserResponse>("/auth/me", {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
 }
 
 export const logoutUser = async (): Promise<void> => {
-  await apiRequest<unknown>("/api/v1/auth/logout", {
+  await apiRequest<unknown>("/auth/logout", {
     method: "POST",
     credentials: "include",
   })

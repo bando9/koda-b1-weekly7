@@ -1,10 +1,17 @@
-import { ArrowUpRight, Plus } from "lucide-react"
+import { useEffect, useState } from "react"
+import { ArrowUpRight, Plus, RefreshCw } from "lucide-react"
 import { Link, useOutletContext } from "react-router"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  dashboardService,
+  type TransactionDto,
+  type UserProfileDto,
+  type WalletDto,
+} from "@/service/dashboard-service"
 import { formatToRupiah } from "@/utils"
 
 interface CustomerLayoutContext {
@@ -12,49 +19,147 @@ interface CustomerLayoutContext {
   initials: string
 }
 
-interface TransactionItem {
-  id: string
-  title: string
-  timestamp: string
-  type: "Pemasukan" | "Pengeluaran"
-  amount: number
-  status: "Berhasil" | "Diproses" | "Gagal"
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 0 || !parts[0]) return "U"
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-const RECENT_TRANSACTIONS: TransactionItem[] = [
-  {
-    id: "tx-1",
-    title: "Top up melalui QRIS",
-    timestamp: "17 Nov 2026 · 09.34",
-    type: "Pemasukan",
-    amount: 250000,
-    status: "Berhasil",
-  },
-  {
-    id: "tx-2",
-    title: "Transfer ke Bima Pratama",
-    timestamp: "16 Nov 2026 · 14.20",
-    type: "Pengeluaran",
-    amount: 75000,
-    status: "Berhasil",
-  },
-  {
-    id: "tx-3",
-    title: "Transfer dari Rina",
-    timestamp: "15 Nov 2026 · 12.08",
-    type: "Pemasukan",
-    amount: 120000,
-    status: "Berhasil",
-  },
-]
+function formatMaskedWalletNumber(walletNumber?: string): string {
+  if (!walletNumber) return "W •••• ••••"
+  const last4 = walletNumber.slice(-4)
+  return `W •••• ${last4}`
+}
+
+function formatIndonesianDate(isoString: string): string {
+  const date = new Date(isoString)
+  const datePart = new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date)
+
+  const timePart = new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(date)
+    .replace(":", ".")
+
+  return `${datePart} · ${timePart}`
+}
+
+function formatTodayHeader(): string {
+  return new Intl.DateTimeFormat("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(new Date())
+}
+
+function mapTransactionStatus(status: string): {
+  label: string
+  colorClass: string
+} {
+  switch (status.toUpperCase()) {
+    case "SUCCESS":
+      return { label: "Berhasil", colorClass: "text-[#135D54]" }
+    case "PENDING":
+      return { label: "Diproses", colorClass: "text-amber-600" }
+    default:
+      return { label: "Gagal", colorClass: "text-red-600" }
+  }
+}
 
 export default function CustomerDashboardPage() {
   const context = useOutletContext<CustomerLayoutContext | undefined>()
-  const displayName = context?.displayName ?? "Nadia"
-  const initials = context?.initials ?? "NP"
 
-  const balance = 1250000
-  const walletNumber = "KW •••• 1842"
+  const [profile, setProfile] = useState<UserProfileDto | null>(null)
+  const [wallet, setWallet] = useState<WalletDto | null>(null)
+  const [transactions, setTransactions] = useState<TransactionDto[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // const loadDashboardData = async () => {
+  //   try {
+  //     setIsLoading(true)
+  //     setError(null)
+
+  //     const [profileRes, walletRes, txRes] = await Promise.all([
+  //       dashboardService.getProfile(),
+  //       dashboardService.getMyWallet(),
+  //       dashboardService.getRecentTransactions(1, 5),
+  //     ])
+
+  //     setProfile(profileRes)
+  //     setWallet(walletRes)
+  //     setTransactions(txRes.items)
+  //   } catch (err) {
+  //     setError(
+  //       err instanceof Error ? err.message : "Gagal memuat data dashboard."
+  //     )
+  //   } finally {
+  //     setIsLoading(false)
+  //   }
+  // }
+
+  // useEffect(() => {
+  //   loadDashboardData()
+  // }, [])
+
+  useEffect(() => {
+    let isCancelled = false
+
+    async function fetchDashboard() {
+      try {
+        const [profileRes, walletRes, txRes] = await Promise.all([
+          dashboardService.getProfile(),
+          dashboardService.getMyWallet(),
+          dashboardService.getRecentTransactions(1, 5),
+        ])
+
+        if (!isCancelled) {
+          setProfile(profileRes)
+          setWallet(walletRes)
+          setTransactions(txRes.items)
+          setError(null)
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setError(
+            err instanceof Error ? err.message : "Gagal memuat data dashboard."
+          )
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    fetchDashboard()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [refreshKey])
+
+  const handleRetry = () => {
+    setIsLoading(true)
+    setError(null)
+    setRefreshKey((prev) => prev + 1)
+  }
+
+  const displayName = profile?.fullName ?? context?.displayName ?? "Pengguna"
+  const initials = profile?.fullName
+    ? getInitials(profile.fullName)
+    : (context?.initials ?? "U")
+
+  const isWalletActive = wallet?.status === "ACTIVE"
 
   return (
     <div className="space-y-8">
@@ -67,7 +172,8 @@ export default function CustomerDashboardPage() {
             Beranda
           </h1>
           <p className="text-sm text-[#64748B]">
-            Selasa, 17 November 2026 &nbsp;•&nbsp; Selamat datang kembali.
+            {formatTodayHeader()} &nbsp;•&nbsp; Selamat datang kembali,{" "}
+            {displayName.split(" ")[0]}.
           </p>
         </div>
 
@@ -83,6 +189,21 @@ export default function CustomerDashboardPage() {
         </div>
       </div>
 
+      {error && (
+        <div className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+          <span>{error}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRetry}
+            className="gap-1.5 border-red-200 bg-white text-red-700 hover:bg-red-100"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Coba Lagi
+          </Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <Card className="rounded-3xl border-0 bg-[#135D54] text-white shadow-none lg:col-span-8">
           <CardContent className="flex h-full flex-col justify-between p-7 sm:p-8">
@@ -90,23 +211,37 @@ export default function CustomerDashboardPage() {
               <p className="mb-4 text-[11px] font-semibold tracking-wider text-white/80 uppercase">
                 SALDO TERSEDIA
               </p>
-              <p className="text-4xl font-bold tracking-tight sm:text-[42px]">
-                {formatToRupiah(balance)}
-              </p>
+              {isLoading ? (
+                <div className="h-11 w-56 animate-pulse rounded-xl bg-white/20" />
+              ) : (
+                <p className="text-4xl font-bold tracking-tight sm:text-[42px]">
+                  {formatToRupiah(wallet?.balance ?? 0)}
+                </p>
+              )}
             </div>
 
             <div className="mt-7 space-y-4">
               <p className="text-sm text-white/85">
                 Nomor dompet &nbsp;·&nbsp;{" "}
                 <span className="font-medium tracking-wide text-white">
-                  {walletNumber}
+                  {isLoading
+                    ? "Memuat..."
+                    : formatMaskedWalletNumber(wallet?.walletNumber)}
                 </span>
               </p>
 
               <div>
                 <Badge className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1 text-xs font-semibold text-[#135D54] hover:bg-white">
-                  <span className="h-2 w-2 rounded-full bg-[#135D54]" />
-                  Aktif
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      isWalletActive ? "bg-[#135D54]" : "bg-amber-500"
+                    }`}
+                  />
+                  {isLoading
+                    ? "Memuat"
+                    : isWalletActive
+                      ? "Aktif"
+                      : (wallet?.status ?? "Nonaktif")}
                 </Badge>
               </div>
             </div>
@@ -171,43 +306,73 @@ export default function CustomerDashboardPage() {
             </Link>
           </div>
 
-          <div className="divide-y divide-slate-100">
-            {RECENT_TRANSACTIONS.map((tx) => {
-              const isIncome = tx.type === "Pemasukan"
-              return (
+          {isLoading ? (
+            <div className="space-y-4 py-6">
+              {[1, 2, 3].map((n) => (
                 <div
-                  key={tx.id}
-                  className="grid grid-cols-1 items-center gap-2 py-5 sm:grid-cols-12 sm:gap-4"
-                >
-                  <div className="sm:col-span-5">
-                    <p className="text-sm font-semibold text-[#1E293B]">
-                      {tx.title}
-                    </p>
-                    <p className="mt-0.5 text-xs text-[#94A3B8]">
-                      {tx.timestamp}
-                    </p>
-                  </div>
+                  key={n}
+                  className="h-12 w-full animate-pulse rounded-xl bg-slate-100"
+                />
+              ))}
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-sm font-medium text-[#1E293B]">
+                Belum ada aktivitas transaksi
+              </p>
+              <p className="mt-1 text-xs text-[#64748B]">
+                Mulai dengan melakukan Isi Saldo atau Transfer ke sesama
+                pengguna.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {transactions.map((tx) => {
+                const isIncome = tx.direction === "IN"
+                const statusInfo = mapTransactionStatus(tx.status)
+                const title =
+                  tx.description ||
+                  (tx.type === "TOPUP" ? "Top up saldo" : "Transfer dana")
 
-                  <div className="sm:col-span-3">
-                    <span className="text-xs text-[#64748B]">{tx.type}</span>
-                  </div>
+                return (
+                  <div
+                    key={tx.id}
+                    className="grid grid-cols-1 items-center gap-2 py-5 sm:grid-cols-12 sm:gap-4"
+                  >
+                    <div className="sm:col-span-5">
+                      <p className="text-sm font-semibold text-[#1E293B]">
+                        {title}
+                      </p>
+                      <p className="mt-0.5 text-xs text-[#94A3B8]">
+                        {formatIndonesianDate(tx.createdAtUtc)}
+                      </p>
+                    </div>
 
-                  <div className="sm:col-span-2">
-                    <span className="text-sm font-semibold text-[#1E293B]">
-                      {isIncome ? "+ " : "- "}
-                      {formatToRupiah(tx.amount)}
-                    </span>
-                  </div>
+                    <div className="sm:col-span-3">
+                      <span className="text-xs text-[#64748B]">
+                        {isIncome ? "Pemasukan" : "Pengeluaran"}
+                      </span>
+                    </div>
 
-                  <div className="sm:col-span-2 sm:text-right">
-                    <span className="text-xs font-semibold text-[#135D54]">
-                      {tx.status}
-                    </span>
+                    <div className="sm:col-span-2">
+                      <span className="text-sm font-semibold text-[#1E293B]">
+                        {isIncome ? "+ " : "- "}
+                        {formatToRupiah(tx.amount)}
+                      </span>
+                    </div>
+
+                    <div className="sm:col-span-2 sm:text-right">
+                      <span
+                        className={`text-xs font-semibold ${statusInfo.colorClass}`}
+                      >
+                        {statusInfo.label}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
