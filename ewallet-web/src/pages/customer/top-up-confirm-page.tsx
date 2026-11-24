@@ -1,12 +1,17 @@
 import { useState } from "react"
 import { AlertCircle, ArrowLeft, Loader2 } from "lucide-react"
-import { Link, useLocation, useNavigate } from "react-router"
+import { Link, Navigate, useLocation, useNavigate } from "react-router"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { dashboardService } from "@/service/dashboard-service"
+import { topUpService } from "@/service/topup-service"
 
 interface TopUpConfirmState {
+  topUpRequestId?: number
+  referenceNo?: string
+  providerReference?: string | null
   recipientName?: string
   amount?: number
   paymentMethod?: string
@@ -22,33 +27,46 @@ export default function TopUpConfirmPage() {
   const location = useLocation()
 
   const state = (location.state as TopUpConfirmState | null) ?? {}
-  const recipientName = state.recipientName ?? "Nadia Putri"
-  const amount = state.amount ?? 250000
-  const paymentMethod = state.paymentMethod ?? "Transfer bank"
-  const currentBalance = state.currentBalance ?? 1250000
-
-  const balanceAfterPayment = currentBalance + amount
+  const topUpRequestId = state.topUpRequestId
+  const recipientName = state.recipientName ?? "Pengguna"
+  const amount = state.amount ?? 0
+  const paymentMethod = state.paymentMethod ?? "Mandiri Virtual Account"
+  const currentBalance = state.currentBalance ?? 0
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  if (!topUpRequestId) {
+    return <Navigate to="/dashboard/top-up" replace />
+  }
+
+  const balanceAfterPayment = currentBalance + amount
 
   const handleSimulatePayment = async () => {
     setErrorMessage(null)
     setIsSubmitting(true)
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 650))
+      const confirmed = await topUpService.confirmTopUp(topUpRequestId)
+
+      const updatedWallet = await dashboardService
+        .getMyWallet()
+        .catch(() => null)
 
       navigate("/dashboard/top-up/success", {
         replace: true,
         state: {
-          amount,
-          referenceNumber: "TOP-20261118-0013",
-          newBalance: balanceAfterPayment,
+          amount: confirmed.amount,
+          referenceNumber: confirmed.referenceNo,
+          newBalance: updatedWallet?.balance ?? balanceAfterPayment,
         },
       })
-    } catch {
-      setErrorMessage("Gagal mensimulasikan pembayaran. Silakan coba lagi.")
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : "Gagal mensimulasikan pembayaran. Silakan coba lagi."
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -101,6 +119,15 @@ export default function TopUpConfirmPage() {
               )}
 
               <div className="space-y-5 text-sm">
+                <div className="grid grid-cols-12 items-center gap-2">
+                  <span className="col-span-5 text-xs text-[#64748B]">
+                    No. Referensi
+                  </span>
+                  <span className="col-span-7 text-xs font-semibold text-[#1E293B]">
+                    {state.referenceNo ?? "-"}
+                  </span>
+                </div>
+
                 <div className="grid grid-cols-12 items-center gap-2">
                   <span className="col-span-5 text-xs text-[#64748B]">
                     Dompet tujuan

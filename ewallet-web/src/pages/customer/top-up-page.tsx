@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react"
-import { AlertCircle } from "lucide-react"
+import { useEffect, useState, type FormEvent } from "react"
+import { AlertCircle, Loader2 } from "lucide-react"
 import { useNavigate, useOutletContext } from "react-router"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -10,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { dashboardService, type WalletDto } from "@/service/dashboard-service"
+import { topUpService } from "@/service/topup-service"
 import { formatRupiah, formatToRupiah } from "@/utils"
 
 interface CustomerLayoutContext {
@@ -17,40 +19,64 @@ interface CustomerLayoutContext {
   initials: string
 }
 
-type PaymentMethodId = "bank_transfer" | "qris"
-
 interface PaymentMethodOption {
-  id: PaymentMethodId
+  id: number // Sesuai ID di tabel PaymentMethods
+  code: string
   title: string
   description: string
 }
 
 const PAYMENT_METHODS: PaymentMethodOption[] = [
   {
-    id: "bank_transfer",
-    title: "Transfer bank",
-    description: "Pembayaran simulasi",
+    id: 2,
+    code: "VA_MANDIRI",
+    title: "Mandiri Virtual Account",
+    description: "Transfer bank (simulasi)",
   },
   {
-    id: "qris",
-    title: "QRIS",
-    description: "Pembayaran simulasi",
+    id: 3,
+    code: "QRIS",
+    title: "QRIS Instant",
+    description: "Pembayaran QRIS (simulasi)",
   },
 ]
 
 export default function TopUpPage() {
   const navigate = useNavigate()
   const context = useOutletContext<CustomerLayoutContext | undefined>()
-  const displayName = context?.displayName ?? "Nadia"
-  const initials = context?.initials ?? "NP"
+  const displayName = context?.displayName ?? "Pengguna"
+  const initials = context?.initials ?? "U"
 
-  const currentBalance = 1250000
+  const [wallet, setWallet] = useState<WalletDto | null>(null)
+  const [isLoadingWallet, setIsLoadingWallet] = useState<boolean>(true)
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
-  const [rawAmount, setRawAmount] = useState<string>("250000")
-  const [selectedMethod, setSelectedMethod] =
-    useState<PaymentMethodId>("bank_transfer")
+  const [rawAmount, setRawAmount] = useState<string>("")
+  const [selectedMethodId, setSelectedMethodId] = useState<number>(2)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
+  useEffect(() => {
+    let isCancelled = false
+
+    dashboardService
+      .getMyWallet()
+      .then((res) => {
+        if (!isCancelled) setWallet(res)
+      })
+      .catch(() => {
+        // Fallback jika gagal memuat wallet
+      })
+      .finally(() => {
+        if (!isCancelled) setIsLoadingWallet(false)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
+  const currentBalance = wallet?.balance ?? 0
+  const isWalletActive = wallet?.status === "ACTIVE"
   const numericAmount = Number(rawAmount) || 0
 
   const handleAmountChange = (value: string) => {
@@ -59,7 +85,7 @@ export default function TopUpPage() {
     if (errorMessage) setErrorMessage(null)
   }
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setErrorMessage(null)
 
@@ -68,27 +94,53 @@ export default function TopUpPage() {
       return
     }
 
-    if (selectedMethod === "qris") {
-      navigate("/dashboard/top-up/qris", {
+    try {
+      setIsSubmitting(true)
+
+      // 1. Panggil backend POST /api/v1/topups -> menghasilkan TopUpRequest berstatus PENDING
+      const createdTopUp = await topUpService.createTopUp({
+        paymentMethodId: selectedMethodId,
+        amount: numericAmount,
+      })
+
+      const selectedOption = PAYMENT_METHODS.find(
+        (m) => m.id === selectedMethodId
+      )
+
+      // 2. Arahkan ke halaman QRIS atau Konfirmasi Bank dengan data asli dari backend
+      if (selectedMethodId === 3) {
+        navigate("/dashboard/top-up/qris", {
+          state: {
+            topUpRequestId: createdTopUp.topUpRequestId,
+            referenceNo: createdTopUp.referenceNo,
+            providerReference: createdTopUp.providerReference,
+            amount: createdTopUp.amount,
+            currentBalance,
+          },
+        })
+        return
+      }
+
+      navigate("/dashboard/top-up/confirm", {
         state: {
-          amount: numericAmount,
+          topUpRequestId: createdTopUp.topUpRequestId,
+          referenceNo: createdTopUp.referenceNo,
+          providerReference: createdTopUp.providerReference,
+          recipientName: displayName,
+          amount: createdTopUp.amount,
+          paymentMethod: selectedOption?.title ?? "Mandiri Virtual Account",
           currentBalance,
         },
       })
-      return
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : "Gagal membuat permintaan isi saldo."
+      )
+    } finally {
+      setIsSubmitting(false)
     }
-
-    const methodLabel =
-      PAYMENT_METHODS.find((m) => m.id === selectedMethod)?.title ?? ""
-
-    navigate("/dashboard/top-up/confirm", {
-      state: {
-        recipientName: displayName,
-        amount: numericAmount,
-        paymentMethod: methodLabel,
-        currentBalance,
-      },
-    })
   }
 
   return (
@@ -158,6 +210,7 @@ export default function TopUpPage() {
                     id="topup-amount"
                     type="text"
                     inputMode="numeric"
+                    disabled={isSubmitting}
                     value={rawAmount ? formatRupiah(numericAmount) : ""}
                     onChange={(e) => handleAmountChange(e.target.value)}
                     placeholder="0"
@@ -172,14 +225,15 @@ export default function TopUpPage() {
                 </Label>
                 <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                   {PAYMENT_METHODS.map((method) => {
-                    const isSelected = selectedMethod === method.id
+                    const isSelected = selectedMethodId === method.id
                     return (
                       <button
                         key={method.id}
                         type="button"
-                        onClick={() => setSelectedMethod(method.id)}
+                        disabled={isSubmitting}
+                        onClick={() => setSelectedMethodId(method.id)}
                         className={cn(
-                          "cursor-pointer rounded-2xl p-5 text-left transition-all focus-visible:ring-2 focus-visible:ring-[#135D54] focus-visible:outline-none",
+                          "cursor-pointer rounded-2xl p-5 text-left transition-all focus-visible:ring-2 focus-visible:ring-[#135D54] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60",
                           isSelected
                             ? "bg-[#EDF5F3]"
                             : "bg-transparent hover:bg-slate-50"
@@ -200,9 +254,17 @@ export default function TopUpPage() {
               <div className="pt-6">
                 <Button
                   type="submit"
-                  className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#135D54] px-5 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99]"
+                  disabled={isSubmitting || isLoadingWallet}
+                  className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#135D54] px-5 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99] disabled:opacity-70"
                 >
-                  Lanjutkan pembayaran
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Membuat permintaan...</span>
+                    </span>
+                  ) : (
+                    "Lanjutkan pembayaran"
+                  )}
                 </Button>
               </div>
             </form>
@@ -217,15 +279,23 @@ export default function TopUpPage() {
 
             <div className="border-b border-slate-100 pb-6">
               <p className="mb-2 text-xs text-[#64748B]">Saldo saat ini</p>
-              <p className="text-[28px] font-bold tracking-tight text-[#1E293B]">
-                {formatToRupiah(currentBalance)}
-              </p>
+              {isLoadingWallet ? (
+                <div className="h-9 w-40 animate-pulse rounded-lg bg-slate-100" />
+              ) : (
+                <p className="text-[28px] font-bold tracking-tight text-[#1E293B]">
+                  {formatToRupiah(currentBalance)}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-between pt-5">
               <span className="text-xs text-[#64748B]">Status dompet</span>
               <Badge className="rounded-full bg-[#E6F4EE] px-3 py-1 text-[10px] font-bold tracking-wider text-[#135D54] uppercase shadow-none hover:bg-[#E6F4EE]">
-                AKTIF
+                {isLoadingWallet
+                  ? "MEMUAT"
+                  : isWalletActive
+                    ? "AKTIF"
+                    : (wallet?.status ?? "NONAKTIF")}
               </Badge>
             </div>
           </CardContent>
