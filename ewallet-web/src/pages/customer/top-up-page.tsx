@@ -1,247 +1,259 @@
-import { useState } from "react"
-import { ArrowLeft } from "lucide-react"
+import { useState, type FormEvent } from "react"
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
+import { useOutletContext } from "react-router"
+
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
+import { formatToRupiah } from "@/utils"
 
-const NAV_ITEMS = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "topup", label: "Top Up" },
-  { id: "transfer", label: "Transfer" },
-  { id: "transactions", label: "Transactions" },
-  { id: "profile", label: "Profile" },
-  { id: "logout", label: "Logout" },
-]
-
-const PAYMENT_METHODS = [
-  { id: "bank_transfer", label: "Bank Transfer" },
-  { id: "qris", label: "QRIS" },
-]
-
-function KodaLogo({ className = "" }) {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 28 28"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={`shrink-0 ${className}`}
-    >
-      <rect
-        x="14"
-        y="2.12132"
-        width="16.8"
-        height="16.8"
-        rx="1.5"
-        transform="rotate(45 14 2.12132)"
-        stroke="currentColor"
-        strokeWidth="2.4"
-      />
-      <rect
-        x="14"
-        y="9.75736"
-        width="6"
-        height="6"
-        rx="0.5"
-        transform="rotate(45 14 9.75736)"
-        fill="currentColor"
-      />
-    </svg>
-  )
+interface CustomerLayoutContext {
+  displayName: string
+  initials: string
 }
 
-export default function TopUpPage({ onBack }) {
-  const [activeNav, setActiveNav] = useState("topup")
-  const [amount, setAmount] = useState("")
-  const [selectedMethod, setSelectedMethod] = useState("bank_transfer")
+type PaymentMethodId = "bank_transfer" | "qris"
 
-  const handleSubmit = (e) => {
+interface PaymentMethodOption {
+  id: PaymentMethodId
+  title: string
+  description: string
+}
+
+const PAYMENT_METHODS: PaymentMethodOption[] = [
+  {
+    id: "bank_transfer",
+    title: "Transfer bank",
+    description: "Pembayaran simulasi",
+  },
+  {
+    id: "qris",
+    title: "QRIS",
+    description: "Pembayaran simulasi",
+  },
+]
+
+export default function TopUpPage() {
+  const context = useOutletContext<CustomerLayoutContext | undefined>()
+  const displayName = context?.displayName ?? "Nadia"
+  const initials = context?.initials ?? "NP"
+
+  const [currentBalance, setCurrentBalance] = useState<number>(1250000)
+
+  const [rawAmount, setRawAmount] = useState<string>("250000")
+  const [selectedMethod, setSelectedMethod] =
+    useState<PaymentMethodId>("bank_transfer")
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+
+  const numericAmount = Number(rawAmount) || 0
+
+  const handleAmountChange = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, "")
+    setRawAmount(digitsOnly)
+    if (errorMessage) setErrorMessage(null)
+    if (successMessage) setSuccessMessage(null)
+  }
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    console.log({
-      amount: amount || "250000",
-      method: selectedMethod,
-    })
+    setErrorMessage(null)
+    setSuccessMessage(null)
+
+    if (numericAmount < 10000) {
+      setErrorMessage("Minimal nominal isi saldo adalah Rp 10.000.")
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 600))
+
+      const methodLabel =
+        PAYMENT_METHODS.find((m) => m.id === selectedMethod)?.title ?? ""
+
+      setCurrentBalance((prev) => prev + numericAmount)
+      setSuccessMessage(
+        `Permintaan isi saldo sebesar ${formatToRupiah(numericAmount)} via ${methodLabel} berhasil dikonfirmasi.`
+      )
+    } catch {
+      setErrorMessage(
+        "Gagal memproses permintaan isi saldo. Silakan coba lagi."
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#F8FAFC] font-sans antialiased md:flex md:bg-[#F5F7FA]">
-      <aside className="hidden bg-[#0F172A] px-4 py-7 text-white md:flex md:w-[240px] md:shrink-0 md:flex-col">
-        <div className="mb-8 flex items-center gap-2.5 px-3">
-          <KodaLogo className="text-white" />
-          <span className="text-[20px] font-bold tracking-tight">
-            KodaWallet
+    <div className="space-y-8">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-[#135D54] uppercase">
+            TRANSAKSI
+          </p>
+          <h1 className="mb-1.5 text-3xl font-bold tracking-tight text-[#1E293B]">
+            Isi saldo
+          </h1>
+          <p className="text-sm text-[#64748B]">
+            Pilih nominal dan metode pembayaran yang tersedia.
+          </p>
+        </div>
+
+        <div className="hidden items-center gap-3 rounded-full bg-white py-2 pr-5 pl-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] lg:flex">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="bg-[#135D54] text-xs font-semibold text-white">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <span className="text-sm font-semibold text-[#1E293B]">
+            {displayName}
           </span>
         </div>
+      </div>
 
-        <p className="mb-3 px-3 text-[11px] font-semibold tracking-wider text-[#64748B] uppercase">
-          PERSONAL WALLET
-        </p>
-
-        <nav className="space-y-1.5">
-          {NAV_ITEMS.map((item) => {
-            const isActive = activeNav === item.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setActiveNav(item.id)}
-                className={`w-full cursor-pointer rounded-xl px-3.5 py-2.5 text-left text-sm transition-colors ${
-                  isActive
-                    ? "bg-[#1E40AF] font-semibold text-white"
-                    : "font-medium text-[#CBD5E1] hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                {item.label}
-              </button>
-            )
-          })}
-        </nav>
-      </aside>
-
-      <main className="flex w-full flex-1 justify-center md:block">
-        <div className="flex min-h-screen w-full max-w-[430px] flex-col px-6 py-8 md:min-h-0 md:max-w-[1160px] md:px-10 md:py-9">
-          <header className="mb-8 flex items-center justify-between md:items-start">
-            <div className="flex items-center gap-3.5 md:block">
-              <button
-                type="button"
-                onClick={onBack}
-                aria-label="Kembali"
-                className="cursor-pointer text-[#0F172A] transition-opacity hover:opacity-75 md:hidden"
-              >
-                <ArrowLeft className="h-5 w-5 stroke-[2.4]" />
-              </button>
-
-              <div>
-                <h1 className="text-[22px] font-bold tracking-tight text-[#0F172A] md:mb-1 md:text-[28px]">
-                  Top Up Wallet
-                </h1>
-                <p className="hidden text-sm text-[#64748B] md:block">
-                  Tambahkan saldo dengan metode pembayaran simulasi.
-                </p>
-              </div>
-            </div>
-
-            <div className="hidden items-center gap-2.5 rounded-full bg-white px-4 py-2 md:flex">
-              <span className="text-xs font-bold text-[#0F172A]">NP</span>
-              <span className="text-xs font-semibold text-[#0F172A]">
-                Nadia
-              </span>
-            </div>
-          </header>
-
-          <section className="mb-7 flex items-center justify-between rounded-2xl bg-white p-5 md:hidden">
-            <div>
-              <p className="mb-1 text-xs font-medium text-[#64748B]">
-                Saldo saat ini
-              </p>
-              <p className="text-[24px] leading-none font-bold tracking-tight text-[#0F172A]">
-                Rp1.250.000
-              </p>
-            </div>
-            <Badge
-              variant="secondary"
-              className="rounded-full border-0 bg-[#DCFCE7] px-3.5 py-1 text-[11px] font-bold tracking-wide text-[#15803D] hover:bg-[#DCFCE7]"
-            >
-              ACTIVE
-            </Badge>
-          </section>
-
-          <div className="flex flex-1 flex-col md:grid md:grid-cols-12 md:items-start md:gap-6">
-            <div className="flex flex-1 flex-col md:col-span-8 md:min-h-[440px] md:rounded-3xl md:bg-white md:p-8">
-              <h2 className="mb-6 hidden text-[20px] font-bold tracking-tight text-[#0F172A] md:block">
-                Form Top Up
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        <Card className="rounded-3xl border-0 bg-white shadow-none lg:col-span-8">
+          <CardContent className="p-7 sm:p-9">
+            <div className="mb-7">
+              <h2 className="mb-1 text-lg font-bold text-[#1E293B]">
+                Buat permintaan isi saldo
               </h2>
-
-              <form onSubmit={handleSubmit} className="flex flex-1 flex-col">
-                <div className="space-y-6">
-                  <div>
-                    <Label
-                      htmlFor="topup-amount"
-                      className="mb-2 block text-xs font-semibold text-[#64748B]"
-                    >
-                      Nominal top up
-                    </Label>
-                    <Input
-                      id="topup-amount"
-                      type="text"
-                      inputMode="numeric"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      placeholder="Rp 250.000"
-                      className="h-12 rounded-xl border-0 bg-white px-4 text-sm text-[#0F172A] shadow-none ring-0 placeholder:text-[#64748B] focus-visible:ring-2 focus-visible:ring-[#1D61E7] md:bg-[#F1F5F9] md:focus-visible:bg-white"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="mb-3 block text-xs font-semibold text-[#64748B]">
-                      Pilih metode pembayaran
-                    </Label>
-
-                    <div className="grid grid-cols-2 gap-3.5">
-                      {PAYMENT_METHODS.map((method) => {
-                        const isSelected = selectedMethod === method.id
-                        return (
-                          <button
-                            key={method.id}
-                            type="button"
-                            onClick={() => setSelectedMethod(method.id)}
-                            className={`flex h-20 cursor-pointer items-center rounded-2xl px-6 text-left text-sm font-bold transition-all ${
-                              isSelected
-                                ? "bg-[#EEF4FF] text-[#0F172A]"
-                                : "bg-white text-[#0F172A] hover:bg-[#F8FAFC] md:bg-transparent md:hover:bg-[#F8FAFC]"
-                            }`}
-                          >
-                            {method.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                  <Button
-                    type="submit"
-                    className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#1D61E7] px-5 text-sm font-semibold text-white shadow-none hover:bg-[#1652C8]"
-                  >
-                    Buat Permintaan Top Up
-                  </Button>
-
-                  <p className="mt-5 text-xs text-[#64748B]">
-                    Saldo bertambah setelah pembayaran dikonfirmasi.
-                  </p>
-                </div>
-              </form>
+              <p className="text-xs text-[#64748B]">
+                Saldo baru bertambah setelah pembayaran dikonfirmasi.
+              </p>
             </div>
 
-            <Card className="hidden rounded-3xl border-0 bg-white p-7 shadow-none ring-0 md:col-span-4 md:block">
-              <CardContent className="p-0">
-                <h2 className="mb-6 text-[18px] font-bold tracking-tight text-[#0F172A]">
-                  Ringkasan Wallet
-                </h2>
+            {errorMessage && (
+              <Alert
+                variant="destructive"
+                className="mb-6 rounded-xl border-red-200 bg-red-50 text-red-700"
+              >
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-xs font-medium">
+                  {errorMessage}
+                </AlertDescription>
+              </Alert>
+            )}
 
-                <p className="mb-2 text-xs font-medium text-[#64748B]">
-                  Saldo saat ini
-                </p>
+            {successMessage && (
+              <Alert className="mb-6 rounded-xl border-emerald-200 bg-emerald-50 text-emerald-800">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <AlertDescription className="text-xs font-medium">
+                  {successMessage}
+                </AlertDescription>
+              </Alert>
+            )}
 
-                <p className="mb-5 text-[28px] leading-none font-bold tracking-tight text-[#0F172A]">
-                  Rp1.250.000
-                </p>
-
-                <Badge
-                  variant="secondary"
-                  className="rounded-full border-0 bg-[#DCFCE7] px-4 py-1 text-[11px] font-bold tracking-wide text-[#15803D] hover:bg-[#DCFCE7]"
+            <form onSubmit={handleSubmit} className="space-y-7">
+              <div className="space-y-2.5">
+                <Label
+                  htmlFor="topup-amount"
+                  className="text-xs font-semibold text-[#64748B]"
                 >
-                  ACTIVE
-                </Badge>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </main>
+                  Nominal isi saldo
+                </Label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm font-medium text-[#1E293B]">
+                    Rp
+                  </span>
+                  <Input
+                    id="topup-amount"
+                    type="text"
+                    inputMode="numeric"
+                    disabled={isSubmitting}
+                    value={rawAmount ? formatToRupiah(numericAmount) : ""}
+                    onChange={(e) => handleAmountChange(e.target.value)}
+                    placeholder="0"
+                    className="h-11 rounded-xl border-transparent bg-transparent pl-9 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="block text-xs font-semibold text-[#64748B]">
+                  Metode pembayaran
+                </Label>
+                <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                  {PAYMENT_METHODS.map((method) => {
+                    const isSelected = selectedMethod === method.id
+                    return (
+                      <button
+                        key={method.id}
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={() => {
+                          setSelectedMethod(method.id)
+                          if (successMessage) setSuccessMessage(null)
+                        }}
+                        className={cn(
+                          "cursor-pointer rounded-2xl p-5 text-left transition-all focus-visible:ring-2 focus-visible:ring-[#135D54] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60",
+                          isSelected
+                            ? "bg-[#EDF5F3]"
+                            : "bg-transparent hover:bg-slate-50"
+                        )}
+                      >
+                        <p className="text-sm font-bold text-[#1E293B]">
+                          {method.title}
+                        </p>
+                        <p className="mt-1 text-xs text-[#64748B]">
+                          {method.description}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-6">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#135D54] px-5 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99] disabled:opacity-70"
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Memproses pembayaran...</span>
+                    </span>
+                  ) : (
+                    "Lanjutkan pembayaran"
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-3xl border-0 bg-white shadow-none lg:col-span-4">
+          <CardContent className="p-7 sm:p-8">
+            <h2 className="mb-6 text-lg font-bold text-[#1E293B]">
+              Ringkasan akun
+            </h2>
+
+            <div className="border-b border-slate-100 pb-6">
+              <p className="mb-2 text-xs text-[#64748B]">Saldo saat ini</p>
+              <p className="text-[28px] font-bold tracking-tight text-[#1E293B]">
+                {formatToRupiah(currentBalance)}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between pt-5">
+              <span className="text-xs text-[#64748B]">Status dompet</span>
+              <Badge className="rounded-full bg-[#E6F4EE] px-3 py-1 text-[10px] font-bold tracking-wider text-[#135D54] uppercase shadow-none hover:bg-[#E6F4EE]">
+                AKTIF
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

@@ -6,8 +6,10 @@ import RegisterPage from "./pages/auth/register"
 import UseAuth from "./hooks/use-auth"
 import { getHomePath } from "./lib/auth-route"
 import SessionChecking from "./components/shared/session-checking"
-import CustomerDashboard from "./layouts/customer-dashboard"
 import AdminUserManagementPage from "./layouts/admin-dashboard"
+import CustomerLayout from "./layouts/customer-layout"
+import CustomerDashboardPage from "./pages/customer/dashboard"
+import TopUpPage from "./pages/customer/top-up-page"
 
 export function App() {
   return (
@@ -36,11 +38,12 @@ export function App() {
         path="/dashboard"
         element={
           <ProtectedRoute allowedRoles={["CUSTOMER"]}>
-            <CustomerDashboard />
+            <CustomerLayout />
           </ProtectedRoute>
         }
       >
-        <Route index element={<CustomerDashboard />} />
+        <Route index element={<CustomerDashboardPage />} />
+        <Route path="top-up" element={<TopUpPage />} />
         {/* topup, transfer, activity, profile */}
       </Route>
 
