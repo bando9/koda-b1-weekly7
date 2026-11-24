@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { formatToRupiah } from "@/utils"
+import { formatRupiah, formatToRupiah } from "@/utils"
 
 interface CustomerLayoutContext {
   displayName: string
@@ -48,10 +48,6 @@ const MOCK_RECIPIENTS: RecipientUser[] = [
     initials: "RW",
   },
 ]
-
-function formatRupiah(amount: number): string {
-  return new Intl.NumberFormat("id-ID").format(amount)
-}
 
 export default function TransferPage() {
   const context = useOutletContext<CustomerLayoutContext | undefined>()

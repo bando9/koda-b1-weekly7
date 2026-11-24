@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { formatToRupiah } from "@/utils"
+import { formatRupiah, formatToRupiah } from "@/utils"
 
 interface CustomerLayoutContext {
   displayName: string
@@ -169,7 +169,7 @@ export default function TopUpPage() {
                     type="text"
                     inputMode="numeric"
                     disabled={isSubmitting}
-                    value={rawAmount ? formatToRupiah(numericAmount) : ""}
+                    value={rawAmount ? formatRupiah(numericAmount) : ""}
                     onChange={(e) => handleAmountChange(e.target.value)}
                     placeholder="0"
                     className="h-11 rounded-xl border-transparent bg-transparent pl-9 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"

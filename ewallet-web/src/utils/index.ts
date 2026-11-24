@@ -5,3 +5,7 @@ export const formatToRupiah = (currency: number | bigint) => {
     minimumFractionDigits: 0,
   }).format(currency)
 }
+
+export function formatRupiah(amount: number): string {
+  return new Intl.NumberFormat("id-ID").format(amount)
+}
