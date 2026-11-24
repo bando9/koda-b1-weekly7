@@ -20,6 +20,4 @@ export interface AuthContextValue {
   logout: () => Promise<void>
 }
 
-// Beri tahu TypeScript bahwa isinya bisa AuthContextValue atau null
 export const AuthContext = createContext<AuthContextValue | null>(null)
-// export const AuthContext = createContext(null)

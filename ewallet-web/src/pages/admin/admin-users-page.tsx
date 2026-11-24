@@ -75,11 +75,9 @@ export default function AdminUsersPage() {
   const displayName = context?.displayName ?? "Admin"
   const initials = context?.initials ?? "AD"
 
-  // Input filter (sebelum tombol Filter ditekan)
   const [searchInput, setSearchInput] = useState("")
   const [statusInput, setStatusInput] = useState<string>("all")
 
-  // Filter aktif yang diterapkan saat tombol Filter / Enter ditekan
   const [appliedSearch, setAppliedSearch] = useState("")
   const [appliedStatus, setAppliedStatus] = useState<string>("all")
 
@@ -107,7 +105,6 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header Halaman + Pil Profil Admin */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-[#135D54] uppercase">
@@ -121,7 +118,6 @@ export default function AdminUsersPage() {
           </p>
         </div>
 
-        {/* Pil Profil Admin (Desktop) */}
         <div className="hidden items-center gap-3 rounded-full bg-white py-2 pr-5 pl-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] lg:flex">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-[#135D54] text-xs font-semibold text-white">
@@ -134,7 +130,6 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      {/* Kartu Daftar Pengguna */}
       <Card className="rounded-3xl border-0 bg-white shadow-none">
         <CardContent className="p-7 sm:p-9">
           <div className="mb-7">
@@ -146,12 +141,10 @@ export default function AdminUsersPage() {
             </p>
           </div>
 
-          {/* Baris Pencarian & Filter */}
           <form
             onSubmit={handleApplyFilter}
             className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-12"
           >
-            {/* Input Cari Pengguna */}
             <div className="sm:col-span-7">
               <Input
                 type="text"
@@ -162,7 +155,6 @@ export default function AdminUsersPage() {
               />
             </div>
 
-            {/* Dropdown Semua Status */}
             <div className="sm:col-span-3">
               <Select
                 value={statusInput}
@@ -188,7 +180,6 @@ export default function AdminUsersPage() {
               </Select>
             </div>
 
-            {/* Tombol Filter */}
             <div className="sm:col-span-2">
               <Button
                 type="submit"
@@ -200,7 +191,6 @@ export default function AdminUsersPage() {
             </div>
           </form>
 
-          {/* Header Kolom Tabel (Desktop) */}
           <div className="hidden grid-cols-12 border-b border-slate-100 pb-3.5 text-[10px] font-semibold tracking-wider text-[#94A3B8] uppercase sm:grid">
             <div className="col-span-4">PENGGUNA</div>
             <div className="col-span-4">EMAIL</div>
@@ -208,7 +198,6 @@ export default function AdminUsersPage() {
             <div className="col-span-2 text-right">AKSI</div>
           </div>
 
-          {/* Daftar Baris Pengguna */}
           {filteredUsers.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-sm font-medium text-[#64748B]">
@@ -224,7 +213,6 @@ export default function AdminUsersPage() {
                     key={item.id}
                     className="grid grid-cols-1 items-center gap-2.5 py-5 sm:grid-cols-12 sm:gap-4"
                   >
-                    {/* Nama & Username */}
                     <div className="sm:col-span-4">
                       <p className="text-sm font-bold text-[#1E293B]">
                         {item.name}
@@ -234,12 +222,10 @@ export default function AdminUsersPage() {
                       </p>
                     </div>
 
-                    {/* Email */}
                     <div className="sm:col-span-4">
                       <p className="text-xs text-[#64748B]">{item.email}</p>
                     </div>
 
-                    {/* Badge Status */}
                     <div className="sm:col-span-2">
                       <Badge
                         className={cn(
@@ -253,7 +239,6 @@ export default function AdminUsersPage() {
                       </Badge>
                     </div>
 
-                    {/* Aksi Detail */}
                     <div className="sm:col-span-2 sm:text-right">
                       <Link
                         to={`/admin/users/${item.id}`}
@@ -269,7 +254,6 @@ export default function AdminUsersPage() {
             </div>
           )}
 
-          {/* Footer Jumlah Akun */}
           <div className="mt-6 pt-2">
             <p className="text-xs text-[#64748B]">
               Menampilkan {filteredUsers.length} dari{" "}

@@ -75,7 +75,6 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header Halaman + Pil Profil Desktop */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-[#135D54] uppercase">
@@ -89,7 +88,6 @@ export default function AdminDashboardPage() {
           </p>
         </div>
 
-        {/* Pil Profil Admin (Desktop) */}
         <div className="hidden items-center gap-3 rounded-full bg-white py-2 pr-5 pl-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] lg:flex">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-[#135D54] text-xs font-semibold text-white">
@@ -102,7 +100,6 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Baris 3 Kartu Metrik Utama */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {PLATFORM_STATS.map((stat) => (
           <Card
@@ -124,7 +121,6 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
-      {/* Kartu Pengguna Terbaru */}
       <Card className="rounded-3xl border-0 bg-white shadow-none">
         <CardContent className="p-7 sm:p-9">
           <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-6">
@@ -149,19 +145,16 @@ export default function AdminDashboardPage() {
                   key={item.id}
                   className="grid grid-cols-1 items-center gap-2 py-5 sm:grid-cols-12 sm:gap-4"
                 >
-                  {/* Nama Pengguna */}
                   <div className="sm:col-span-4">
                     <p className="text-sm font-bold text-[#1E293B]">
                       {item.name}
                     </p>
                   </div>
 
-                  {/* Email */}
                   <div className="sm:col-span-5">
                     <p className="text-xs text-[#64748B]">{item.email}</p>
                   </div>
 
-                  {/* Badge Status */}
                   <div className="sm:col-span-3 sm:text-right">
                     <Badge
                       className={cn(

@@ -103,6 +103,22 @@ builder.Services.AddRateLimiter(options =>
             }
         );
     });
+
+    options.AddPolicy("auth-refresh", context =>
+    {
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "Nihil";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"refresh:{ip}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(2),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }
+        );
+    });
 });
 
 var allowedOrigins = builder.Configuration

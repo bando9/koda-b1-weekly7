@@ -174,7 +174,6 @@ export default function ActivitiesPage() {
   const [selectedDateRange, setSelectedDateRange] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState<number>(1)
 
-  // Filter data transaksi berdasarkan pencarian & dropdown
   const filteredTransactions = useMemo(() => {
     return MOCK_ACTIVITIES.filter((item) => {
       const q = searchQuery.trim().toLowerCase()
@@ -219,7 +218,6 @@ export default function ActivitiesPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header Halaman + Pil Profil Desktop */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-[#135D54] uppercase">
@@ -233,7 +231,6 @@ export default function ActivitiesPage() {
           </p>
         </div>
 
-        {/* Pil Profil Pengguna (Desktop) */}
         <div className="hidden items-center gap-3 rounded-full bg-white py-2 pr-5 pl-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] lg:flex">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-[#135D54] text-xs font-semibold text-white">
@@ -246,16 +243,13 @@ export default function ActivitiesPage() {
         </div>
       </div>
 
-      {/* Kartu Utama Riwayat Transaksi */}
       <Card className="rounded-3xl border-0 bg-white shadow-none">
         <CardContent className="p-7 sm:p-9">
           <h2 className="mb-6 text-lg font-bold text-[#1E293B]">
             Riwayat transaksi
           </h2>
 
-          {/* Baris Pencarian & Filter */}
           <div className="mb-7 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
-            {/* Input Cari Nomor Referensi */}
             <div className="sm:col-span-2 lg:col-span-5">
               <Input
                 type="text"
@@ -269,7 +263,6 @@ export default function ActivitiesPage() {
               />
             </div>
 
-            {/* Filter Tipe */}
             <div className="lg:col-span-2">
               <Select
                 value={selectedType}
@@ -292,7 +285,6 @@ export default function ActivitiesPage() {
               </Select>
             </div>
 
-            {/* Filter Status */}
             <div className="lg:col-span-2">
               <Select
                 value={selectedStatus}
@@ -318,7 +310,6 @@ export default function ActivitiesPage() {
               </Select>
             </div>
 
-            {/* Filter Rentang Tanggal */}
             <div className="sm:col-span-2 lg:col-span-3">
               <Select
                 value={selectedDateRange}
@@ -345,7 +336,6 @@ export default function ActivitiesPage() {
             </div>
           </div>
 
-          {/* Header Kolom Tabel (Desktop) */}
           <div className="hidden grid-cols-12 border-b border-slate-100 pb-3.5 text-[10px] font-semibold tracking-wider text-[#94A3B8] uppercase sm:grid">
             <div className="col-span-5">TRANSAKSI</div>
             <div className="col-span-3">JENIS</div>
@@ -353,7 +343,6 @@ export default function ActivitiesPage() {
             <div className="col-span-2 text-right">STATUS</div>
           </div>
 
-          {/* Daftar Transaksi */}
           {paginatedTransactions.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-sm font-medium text-[#64748B]">
@@ -369,7 +358,6 @@ export default function ActivitiesPage() {
                     key={tx.id}
                     className="grid grid-cols-1 items-center gap-2.5 py-5 sm:grid-cols-12 sm:gap-4"
                   >
-                    {/* Judul & Nomor Referensi */}
                     <div className="sm:col-span-5">
                       <p className="text-sm font-bold text-[#1E293B]">
                         {tx.title}
@@ -379,21 +367,18 @@ export default function ActivitiesPage() {
                       </p>
                     </div>
 
-                    {/* Jenis Transaksi */}
                     <div className="sm:col-span-3">
                       <span className="text-[11px] font-medium tracking-wide text-[#64748B] uppercase">
                         {tx.type}
                       </span>
                     </div>
 
-                    {/* Nominal */}
                     <div className="sm:col-span-2">
                       <span className="text-sm font-bold text-[#1E293B]">
                         {isIncoming ? "+ " : "- "}Rp{formatRupiah(tx.amount)}
                       </span>
                     </div>
 
-                    {/* Status Badge */}
                     <div className="sm:col-span-2 sm:text-right">
                       <Badge
                         className={cn(
@@ -415,14 +400,12 @@ export default function ActivitiesPage() {
             </div>
           )}
 
-          {/* Footer: Info Jumlah Data & Kontrol Paginasi */}
           <div className="mt-7 flex flex-col items-center justify-between gap-4 pt-2 sm:flex-row">
             <p className="text-xs text-[#64748B]">
               Menampilkan {paginatedTransactions.length} dari{" "}
               {filteredTransactions.length} transaksi
             </p>
 
-            {/* Pil Paginasi */}
             <div className="inline-flex items-center gap-1.5 rounded-xl bg-[#EDF5F3] px-4 py-2.5 text-xs">
               {Array.from({ length: totalPages }, (_, index) => {
                 const page = index + 1

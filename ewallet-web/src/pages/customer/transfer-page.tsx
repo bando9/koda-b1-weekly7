@@ -23,7 +23,6 @@ interface RecipientUser {
   initials: string
 }
 
-// Data contoh pengguna untuk pencarian penerima
 const MOCK_RECIPIENTS: RecipientUser[] = [
   {
     id: "usr-1",

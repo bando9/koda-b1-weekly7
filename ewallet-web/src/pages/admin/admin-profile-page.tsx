@@ -30,7 +30,6 @@ export default function AdminProfilePage() {
   const displayName = context?.displayName ?? "Admin"
   const initials = context?.initials ?? "AD"
 
-  // Data profil admin bersifat read-only
   const adminProfile = {
     fullName: user?.name || "Admin KodaWallet",
     username: user?.username || "admin",
@@ -39,7 +38,6 @@ export default function AdminProfilePage() {
     status: "Aktif",
   }
 
-  // State modal Ubah Kata Sandi
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -81,7 +79,6 @@ export default function AdminProfilePage() {
 
     setIsSavingPassword(true)
     try {
-      // Simulasi pemanggilan API ganti password admin
       await new Promise((resolve) => setTimeout(resolve, 600))
       setIsPasswordModalOpen(false)
       setPasswordSuccess("Kata sandi akun admin berhasil diperbarui.")
@@ -94,7 +91,6 @@ export default function AdminProfilePage() {
 
   return (
     <div className="space-y-8">
-      {/* Header Halaman + Pil Profil Admin */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-[#135D54] uppercase">
@@ -108,7 +104,6 @@ export default function AdminProfilePage() {
           </p>
         </div>
 
-        {/* Pil Profil Admin (Desktop) */}
         <div className="hidden items-center gap-3 rounded-full bg-white py-2 pr-5 pl-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] lg:flex">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-[#135D54] text-xs font-semibold text-white">
@@ -121,9 +116,7 @@ export default function AdminProfilePage() {
         </div>
       </div>
 
-      {/* Konten Utama: Informasi Profil Read-Only (Kiri) & Keamanan Akun (Kanan) */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
-        {/* Kartu Informasi Profil (Read-only) */}
         <Card className="rounded-3xl border-0 bg-white shadow-none lg:col-span-8">
           <CardContent className="p-7 sm:p-9">
             <div className="mb-7 flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-6">
@@ -150,7 +143,6 @@ export default function AdminProfilePage() {
               </Alert>
             )}
 
-            {/* Daftar Field Read-Only */}
             <div className="space-y-6">
               <div className="space-y-1.5">
                 <p className="text-xs font-medium text-[#64748B]">
@@ -187,7 +179,6 @@ export default function AdminProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Kartu Keamanan Akun (Kanan) */}
         <Card className="rounded-3xl border-0 bg-white shadow-none lg:col-span-4">
           <CardContent className="p-7 sm:p-8">
             <h2 className="mb-6 text-lg font-bold text-[#1E293B]">
@@ -215,7 +206,6 @@ export default function AdminProfilePage() {
         </Card>
       </div>
 
-      {/* Dialog Ubah Kata Sandi */}
       <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
         <DialogContent className="rounded-2xl sm:max-w-md">
           <DialogHeader>

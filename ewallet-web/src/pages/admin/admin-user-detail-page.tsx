@@ -36,7 +36,6 @@ interface CustomerDetail {
   status: AccountStatus
 }
 
-// Data contoh berdasarkan ID pengguna (default sesuai desain: Nadia Putri)
 const MOCK_CUSTOMER_DETAILS: Record<string, CustomerDetail> = {
   "usr-1": {
     id: "usr-1",
@@ -116,7 +115,6 @@ export default function AdminUserDetailPage() {
     setStatusFeedback(null)
 
     try {
-      // Simulasi API ubah status akun
       await new Promise((resolve) => setTimeout(resolve, 600))
 
       const nextStatus: AccountStatus = isActive ? "Ditangguhkan" : "Aktif"
@@ -134,7 +132,6 @@ export default function AdminUserDetailPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header Halaman + Pil Profil Admin */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-[#135D54] uppercase">
@@ -148,7 +145,6 @@ export default function AdminUserDetailPage() {
           </p>
         </div>
 
-        {/* Pil Profil Admin (Desktop) */}
         <div className="hidden items-center gap-3 rounded-full bg-white py-2 pr-5 pl-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] lg:flex">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-[#135D54] text-xs font-semibold text-white">
@@ -161,12 +157,9 @@ export default function AdminUserDetailPage() {
         </div>
       </div>
 
-      {/* Konten Utama: Informasi Profil Customer (Kiri) & Status Akun (Kanan) */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
-        {/* Kartu Detail Profil Pengguna */}
         <Card className="rounded-3xl border-0 bg-white shadow-none lg:col-span-8">
           <CardContent className="p-7 sm:p-9">
-            {/* Tautan Kembali ke Daftar */}
             <div className="mb-7">
               <Link
                 to="/admin/users"
@@ -186,7 +179,6 @@ export default function AdminUserDetailPage() {
               </Alert>
             )}
 
-            {/* Header Profil Customer (Avatar, Nama, Username, Badge Status) */}
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-7">
               <div className="flex items-center gap-4">
                 <Avatar className="h-14 w-14">
@@ -216,7 +208,6 @@ export default function AdminUserDetailPage() {
               </Badge>
             </div>
 
-            {/* Daftar Atribut Akun */}
             <div className="mt-7 space-y-6 text-sm">
               <div className="grid grid-cols-1 gap-1 sm:grid-cols-12 sm:items-center sm:gap-4">
                 <span className="text-xs text-[#64748B] sm:col-span-4">
@@ -266,7 +257,6 @@ export default function AdminUserDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Kartu Status Akun (Kanan) */}
         <Card className="rounded-3xl border-0 bg-white shadow-none lg:col-span-4">
           <CardContent className="p-7 sm:p-8">
             <h2 className="mb-4 text-lg font-bold text-[#1E293B]">
@@ -310,7 +300,6 @@ export default function AdminUserDetailPage() {
         </Card>
       </div>
 
-      {/* Dialog Konfirmasi Penangguhan / Aktivasi Akun */}
       <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
         <DialogContent className="rounded-2xl sm:max-w-md">
           <DialogHeader>

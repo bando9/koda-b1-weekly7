@@ -42,3 +42,27 @@ Accept: application/json
 GET {{baseUrl}}/api/v1/auth/me
 Accept: application/json
 Authorization: Bearer {{loginAdmin.response.body.$.accessToken}}
+
+
+### LOGIN
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Origin: http://localhost:5173
+Content-Type: application/json
+Accept: application/json
+
+{
+    "identifier": "dimas.wijaya",
+    "password": "Customer#123"
+}
+
+### TEST ME
+GET {{baseUrl}}/api/v1/auth/me
+Accept: application/json 
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### REFRESH TOKEN
+POST {{baseUrl}}/api/v1/auth/refresh
+Origin: http://localhost:5173
+Cookie: ewallet_refresh=9E8D764B2D4BE235689682ECD2987B30FCEB750173DE1ED8FE01EE0B6F2C1FD9
+Accept: application/json

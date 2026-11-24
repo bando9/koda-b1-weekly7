@@ -87,7 +87,6 @@ export default function RegisterPage() {
 
     setIsLoading(true)
     try {
-      // Ganti bagian ini dengan pemanggilan fungsi register dari auth-api / useAuth
       await new Promise((resolve) => setTimeout(resolve, 650))
 
       navigate("/login", {
@@ -112,7 +111,6 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen flex-col font-sans antialiased lg:flex-row">
-      {/* Panel Kiri: Value Proposition */}
       <div className="flex min-h-64 w-full flex-col justify-center bg-[#135D54] px-8 py-12 text-white lg:min-h-screen lg:w-[36.11%] lg:px-14">
         <div className="max-w-xs">
           <h1 className="mb-4 text-4xl leading-[1.18] font-bold tracking-tight sm:text-[42px]">
@@ -126,7 +124,6 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Panel Kanan: Form Pendaftaran */}
       <div className="flex w-full flex-1 items-center justify-center bg-white px-6 py-12 sm:px-12 lg:w-[63.89%]">
         <div className="w-full max-w-150">
           <div className="mb-9">
@@ -151,7 +148,6 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit} noValidate className="space-y-6">
-            {/* Baris 1: Nama Lengkap & Username */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label
@@ -216,7 +212,6 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Baris 2: Email & Nomor Telepon */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label
@@ -281,7 +276,6 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Baris 3: Password & Konfirmasi Password */}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label
@@ -382,12 +376,10 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Info Dompet Otomatis */}
             <p className="pt-2 text-xs text-[#64748B]">
               Akun baru akan mendapatkan dompet aktif dengan saldo Rp0.
             </p>
 
-            {/* Tombol Buat Akun */}
             <div>
               <Button
                 type="submit"
@@ -406,7 +398,6 @@ export default function RegisterPage() {
             </div>
           </form>
 
-          {/* Tautan Sudah Terdaftar */}
           <div className="mt-7 text-center">
             <p className="text-xs font-semibold text-[#135D54]">
               Sudah terdaftar?{" "}
