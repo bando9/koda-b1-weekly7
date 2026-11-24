@@ -1,0 +1,60 @@
+import { apiFetch } from "@/lib/api"
+
+export interface AdminUserSummaryDto {
+  totalUsers: number
+  activeUsers: number
+  suspendedUsers: number
+  newUsersThisMonth: number
+}
+
+export interface AdminUserItemDto {
+  id: number
+  fullName: string
+  userName: string
+  email: string
+  phoneNumber: string | null
+  status: "ACTIVE" | "SUSPENDED" | string
+  roles: string[]
+  wallet: {
+    id: number
+    walletNumber: string
+    balance: number
+    status: string
+  } | null
+  createdAtUtc: string
+}
+
+export interface PagedAdminUsersDto {
+  items: AdminUserItemDto[]
+  page: number
+  pageSize: number
+  totalCount: number
+}
+
+export const adminService = {
+  getUsersSummary: () => apiFetch<AdminUserSummaryDto>("/admin/users/summary"),
+
+  getUsers: (params?: {
+    search?: string
+    status?: string
+    page?: number
+    pageSize?: number
+  }) => {
+    const query = new URLSearchParams()
+    if (params?.search?.trim()) query.set("search", params.search.trim())
+    if (params?.status && params.status !== "all")
+      query.set("status", params.status)
+    query.set("page", String(params?.page ?? 1))
+    query.set("pageSize", String(params?.pageSize ?? 10))
+
+    return apiFetch<PagedAdminUsersDto>(`/admin/users?${query.toString()}`)
+  },
+
+  getUserById: (id: number) => apiFetch<AdminUserItemDto>(`/admin/users/${id}`),
+
+  updateUserStatus: (id: number, status: "ACTIVE" | "SUSPENDED") =>
+    apiFetch<{ id: number; status: string }>(`/admin/users/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }),
+}

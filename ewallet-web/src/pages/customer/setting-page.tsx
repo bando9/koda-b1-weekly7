@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react"
 import { useOutletContext } from "react-router"
 
@@ -16,22 +16,30 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { profileService } from "@/service/profile-service"
 
 interface CustomerLayoutContext {
   displayName: string
   initials: string
+  refreshProfile?: () => void
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 0 || !parts[0]) return "U"
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 export default function SettingsPage() {
   const context = useOutletContext<CustomerLayoutContext | undefined>()
-  const displayName = context?.displayName ?? "Nadia"
-  const initials = context?.initials ?? "NP"
 
-  const [fullName, setFullName] = useState("Nadia Putri")
-  const [username, setUsername] = useState("nadia")
-  const [email, setEmail] = useState("nadia@example.com")
-  const [phoneNumber, setPhoneNumber] = useState("0812 3456 7890")
+  const [fullName, setFullName] = useState("")
+  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
+  const [phoneNumber, setPhoneNumber] = useState("")
 
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true)
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null)
@@ -45,22 +53,70 @@ export default function SettingsPage() {
   const [isSavingPassword, setIsSavingPassword] = useState(false)
   const [passwordError, setPasswordError] = useState<string | null>(null)
 
+  useEffect(() => {
+    let isCancelled = false
+
+    profileService
+      .getProfile()
+      .then((res) => {
+        if (!isCancelled) {
+          setFullName(res.fullName)
+          setUsername(res.userName)
+          setEmail(res.email)
+          setPhoneNumber(res.phoneNumber ?? "")
+        }
+      })
+      .catch((err) => {
+        if (!isCancelled) {
+          setProfileError(
+            err instanceof Error ? err.message : "Gagal memuat data profil."
+          )
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoadingProfile(false)
+        }
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
+  const displayName = fullName.trim() || context?.displayName || "Pengguna"
+  const initials = fullName.trim()
+    ? getInitials(fullName)
+    : (context?.initials ?? "U")
+
   const handleSaveProfile = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setProfileError(null)
     setProfileSuccess(null)
 
-    if (!fullName.trim() || !username.trim() || !email.trim()) {
-      setProfileError("Nama lengkap, username, dan email wajib diisi.")
+    if (!fullName.trim() || !phoneNumber.trim()) {
+      setProfileError("Nama lengkap dan nomor ponsel wajib diisi.")
       return
     }
 
     setIsSavingProfile(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600))
+      const updated = await profileService.updateProfile({
+        fullName: fullName.trim(),
+        phoneNumber: phoneNumber.trim(),
+      })
+
+      setFullName(updated.fullName)
+      setPhoneNumber(updated.phoneNumber)
       setProfileSuccess("Perubahan informasi profil berhasil disimpan.")
-    } catch {
-      setProfileError("Gagal menyimpan perubahan profil. Silakan coba lagi.")
+
+      context?.refreshProfile?.()
+    } catch (err) {
+      setProfileError(
+        err instanceof Error
+          ? err.message
+          : "Gagal menyimpan perubahan profil. Silakan coba lagi."
+      )
     } finally {
       setIsSavingProfile(false)
     }
@@ -96,11 +152,19 @@ export default function SettingsPage() {
 
     setIsSavingPassword(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600))
+      const res = await profileService.changePassword({
+        currentPassword,
+        newPassword,
+      })
+
       setIsPasswordModalOpen(false)
-      setProfileSuccess("Kata sandi akun berhasil diperbarui.")
-    } catch {
-      setPasswordError("Gagal memperbarui kata sandi. Silakan coba lagi.")
+      setProfileSuccess(res.message || "Kata sandi akun berhasil diperbarui.")
+    } catch (err) {
+      setPasswordError(
+        err instanceof Error
+          ? err.message
+          : "Gagal memperbarui kata sandi. Silakan coba lagi."
+      )
     } finally {
       setIsSavingPassword(false)
     }
@@ -166,108 +230,109 @@ export default function SettingsPage() {
               </Alert>
             )}
 
-            <form onSubmit={handleSaveProfile} className="space-y-6">
-              <div className="space-y-2">
-                <Label
-                  htmlFor="full-name"
-                  className="text-xs font-medium text-[#64748B]"
-                >
-                  Nama lengkap
-                </Label>
-                <Input
-                  id="full-name"
-                  type="text"
-                  disabled={isSavingProfile}
-                  value={fullName}
-                  onChange={(e) => {
-                    setFullName(e.target.value)
-                    if (profileSuccess) setProfileSuccess(null)
-                  }}
-                  placeholder="Masukkan nama lengkap"
-                  className="h-11 rounded-xl border-transparent bg-transparent px-3 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
-                />
+            {isLoadingProfile ? (
+              <div className="space-y-5 py-2">
+                {[1, 2, 3, 4].map((n) => (
+                  <div
+                    key={n}
+                    className="h-12 w-full animate-pulse rounded-xl bg-slate-100"
+                  />
+                ))}
               </div>
+            ) : (
+              <form onSubmit={handleSaveProfile} className="space-y-6">
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="full-name"
+                    className="text-xs font-medium text-[#64748B]"
+                  >
+                    Nama lengkap
+                  </Label>
+                  <Input
+                    id="full-name"
+                    type="text"
+                    disabled={isSavingProfile}
+                    value={fullName}
+                    onChange={(e) => {
+                      setFullName(e.target.value)
+                      if (profileSuccess) setProfileSuccess(null)
+                    }}
+                    placeholder="Masukkan nama lengkap"
+                    className="h-11 rounded-xl border-transparent bg-transparent px-3 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label
-                  htmlFor="username"
-                  className="text-xs font-medium text-[#64748B]"
-                >
-                  Username
-                </Label>
-                <Input
-                  id="username"
-                  type="text"
-                  disabled={isSavingProfile}
-                  value={username}
-                  onChange={(e) => {
-                    setUsername(e.target.value)
-                    if (profileSuccess) setProfileSuccess(null)
-                  }}
-                  placeholder="Masukkan username"
-                  className="h-11 rounded-xl border-transparent bg-transparent px-3 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="username"
+                    className="text-xs font-medium text-[#64748B]"
+                  >
+                    Username
+                  </Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    disabled
+                    value={username}
+                    className="h-11 cursor-not-allowed rounded-xl border-transparent bg-slate-50 px-3 text-sm font-medium text-[#64748B] shadow-none"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label
-                  htmlFor="email"
-                  className="text-xs font-medium text-[#64748B]"
-                >
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  disabled={isSavingProfile}
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value)
-                    if (profileSuccess) setProfileSuccess(null)
-                  }}
-                  placeholder="nama@example.com"
-                  className="h-11 rounded-xl border-transparent bg-transparent px-3 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="email"
+                    className="text-xs font-medium text-[#64748B]"
+                  >
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    disabled
+                    value={email}
+                    className="h-11 cursor-not-allowed rounded-xl border-transparent bg-slate-50 px-3 text-sm font-medium text-[#64748B] shadow-none"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label
-                  htmlFor="phone-number"
-                  className="text-xs font-medium text-[#64748B]"
-                >
-                  Nomor ponsel
-                </Label>
-                <Input
-                  id="phone-number"
-                  type="tel"
-                  disabled={isSavingProfile}
-                  value={phoneNumber}
-                  onChange={(e) => {
-                    setPhoneNumber(e.target.value)
-                    if (profileSuccess) setProfileSuccess(null)
-                  }}
-                  placeholder="0812 3456 7890"
-                  className="h-11 rounded-xl border-transparent bg-transparent px-3 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="phone-number"
+                    className="text-xs font-medium text-[#64748B]"
+                  >
+                    Nomor ponsel
+                  </Label>
+                  <Input
+                    id="phone-number"
+                    type="tel"
+                    disabled={isSavingProfile}
+                    value={phoneNumber}
+                    onChange={(e) => {
+                      setPhoneNumber(e.target.value)
+                      if (profileSuccess) setProfileSuccess(null)
+                    }}
+                    placeholder="081234567890"
+                    className="h-11 rounded-xl border-transparent bg-transparent px-3 text-sm font-medium text-[#1E293B] shadow-none transition-colors hover:bg-slate-50/80 focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54]"
+                  />
+                </div>
 
-              <div className="pt-2">
-                <Button
-                  type="submit"
-                  disabled={isSavingProfile}
-                  className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#135D54] px-5 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99] disabled:opacity-70"
-                >
-                  {isSavingProfile ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Menyimpan perubahan...</span>
-                    </span>
-                  ) : (
-                    "Simpan perubahan"
-                  )}
-                </Button>
-              </div>
-            </form>
+                <div className="pt-2">
+                  <Button
+                    type="submit"
+                    disabled={isSavingProfile}
+                    className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#135D54] px-5 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#0F4C44] active:scale-[0.99] disabled:opacity-70"
+                  >
+                    {isSavingProfile ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Menyimpan perubahan...</span>
+                      </span>
+                    ) : (
+                      "Simpan perubahan"
+                    )}
+                  </Button>
+                </div>
+              </form>
+            )}
           </CardContent>
         </Card>
 
@@ -288,6 +353,7 @@ export default function SettingsPage() {
               <Button
                 type="button"
                 variant="secondary"
+                disabled={isLoadingProfile}
                 onClick={handleOpenPasswordModal}
                 className="h-12 w-full cursor-pointer justify-start rounded-xl bg-[#EDF5F3] px-4 text-sm font-semibold text-[#135D54] shadow-none transition-colors hover:bg-[#E1EFEA]"
               >

@@ -29,6 +29,7 @@ public sealed class AdminUsersController(
     [HttpGet]
     public async Task<IActionResult> GetUsers(
         [FromQuery] string? search,
+        [FromQuery] UserStatusEnum? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         CancellationToken ct = default)
@@ -37,6 +38,11 @@ public sealed class AdminUsersController(
         pageSize = Math.Clamp(pageSize, 1, 50);
 
         var query = userManager.Users.AsNoTracking();
+
+        if (status.HasValue)
+        {
+            query = query.Where(u => u.Status == status.Value);
+        }
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -191,5 +197,26 @@ public sealed class AdminUsersController(
         await db.SaveChangesAsync(ct);
 
         return Ok(new { user.Id, Role = roleName });
+    }
+
+
+    [HttpGet("summary")]
+    public async Task<IActionResult> GetUsersSummary(CancellationToken ct)
+    {
+        var nowUtc = DateTimeOffset.UtcNow;
+        var startOfMonthUtc = new DateTimeOffset(nowUtc.Year, nowUtc.Month, 1, 0, 0, 0, TimeSpan.Zero);
+
+        var totalUsers = await userManager.Users.CountAsync(ct);
+        var activeUsers = await userManager.Users.CountAsync(u => u.Status == UserStatusEnum.ACTIVE, ct);
+        var suspendedUsers = await userManager.Users.CountAsync(u => u.Status == UserStatusEnum.SUSPENDED, ct);
+        var newUsersThisMonth = await userManager.Users.CountAsync(u => u.CreatedAtUtc >= startOfMonthUtc, ct);
+
+        return Ok(new
+        {
+            totalUsers,
+            activeUsers,
+            suspendedUsers,
+            newUsersThisMonth
+        });
     }
 }

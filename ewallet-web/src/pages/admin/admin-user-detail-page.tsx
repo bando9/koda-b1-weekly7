@@ -1,5 +1,11 @@
-import { useState } from "react"
-import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  Loader2,
+  RefreshCw,
+} from "lucide-react"
 import { Link, useOutletContext, useParams } from "react-router"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -16,118 +22,154 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { adminService, type AdminUserItemDto } from "@/service/admin-service"
+import {
+  dashboardService,
+  type UserProfileDto,
+} from "@/service/dashboard-service"
 
 interface AdminLayoutContext {
   displayName: string
   initials: string
 }
 
-type AccountStatus = "Aktif" | "Ditangguhkan"
-
-interface CustomerDetail {
-  id: string
-  fullName: string
-  username: string
-  initials: string
-  email: string
-  phone: string
-  walletNumber: string
-  registeredAt: string
-  status: AccountStatus
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 0 || !parts[0]) return "U"
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-const MOCK_CUSTOMER_DETAILS: Record<string, CustomerDetail> = {
-  "usr-1": {
-    id: "usr-1",
-    fullName: "Nadia Putri",
-    username: "nadia",
-    initials: "NP",
-    email: "nadia@example.com",
-    phone: "0812 3456 7890",
-    walletNumber: "KW •••• 1842",
-    registeredAt: "10 November 2026",
-    status: "Aktif",
-  },
-  "usr-2": {
-    id: "usr-2",
-    fullName: "Bima Pratama",
-    username: "bima",
-    initials: "BP",
-    email: "bima@example.com",
-    phone: "0813 9876 5432",
-    walletNumber: "KW •••• 2941",
-    registeredAt: "08 November 2026",
-    status: "Aktif",
-  },
-  "usr-3": {
-    id: "usr-3",
-    fullName: "Rina Maharani",
-    username: "rina",
-    initials: "RM",
-    email: "rina@example.com",
-    phone: "0857 1122 3344",
-    walletNumber: "KW •••• 5108",
-    registeredAt: "05 November 2026",
-    status: "Aktif",
-  },
-  "usr-4": {
-    id: "usr-4",
-    fullName: "Hendra Wijaya",
-    username: "hendra",
-    initials: "HW",
-    email: "hendra@example.com",
-    phone: "0821 4455 6677",
-    walletNumber: "KW •••• 7730",
-    registeredAt: "01 November 2026",
-    status: "Ditangguhkan",
-  },
-  "usr-5": {
-    id: "usr-5",
-    fullName: "Dian Ayu",
-    username: "dian",
-    initials: "DA",
-    email: "dian@example.com",
-    phone: "0819 2233 4455",
-    walletNumber: "KW •••• 9014",
-    registeredAt: "29 Oktober 2026",
-    status: "Aktif",
-  },
+function formatRegisteredDate(isoString?: string): string {
+  if (!isoString) return "-"
+  const date = new Date(isoString)
+  if (Number.isNaN(date.getTime())) return "-"
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(date)
 }
 
 export default function AdminUserDetailPage() {
   const { userId } = useParams<{ userId: string }>()
   const context = useOutletContext<AdminLayoutContext | undefined>()
-  const displayName = context?.displayName ?? "Admin"
-  const adminInitials = context?.initials ?? "AD"
 
-  const initialCustomer =
-    (userId && MOCK_CUSTOMER_DETAILS[userId]) || MOCK_CUSTOMER_DETAILS["usr-1"]
+  const [adminProfile, setAdminProfile] = useState<UserProfileDto | null>(null)
+  const [customer, setCustomer] = useState<AdminUserItemDto | null>(null)
 
-  const [customer, setCustomer] = useState<CustomerDetail>(initialCustomer)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState<number>(0)
+
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [statusFeedback, setStatusFeedback] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  const isActive = customer.status === "Aktif"
+  // Ambil profil admin yang login
+  useEffect(() => {
+    let isCancelled = false
+
+    dashboardService
+      .getProfile()
+      .then((res) => {
+        if (!isCancelled) setAdminProfile(res)
+      })
+      .catch(() => {})
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
+  // Ambil detail user dari GET /api/v1/admin/users/{id}
+  useEffect(() => {
+    let isCancelled = false
+    const numericId = Number(userId)
+
+    if (!userId || Number.isNaN(numericId) || numericId <= 0) {
+      setFetchError("ID pengguna tidak valid.")
+      setIsLoading(false)
+      return
+    }
+
+    async function fetchUserDetail() {
+      try {
+        const res = await adminService.getUserById(numericId)
+        if (!isCancelled) {
+          setCustomer(res)
+          setFetchError(null)
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setFetchError(
+            err instanceof Error ? err.message : "Gagal memuat detail pengguna."
+          )
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    fetchUserDetail()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [userId, refreshKey])
+
+  const displayName = adminProfile?.fullName || context?.displayName || "Admin"
+  const adminInitials = adminProfile?.fullName
+    ? getInitials(adminProfile.fullName)
+    : context?.initials || "AD"
+
+  const isActive = customer?.status.toUpperCase() === "ACTIVE"
+  const statusLabel = isActive ? "Aktif" : "Ditangguhkan"
 
   const handleToggleAccountStatus = async () => {
+    if (!customer) return
+
     setIsUpdatingStatus(true)
     setStatusFeedback(null)
+    setActionError(null)
+
+    const nextApiStatus: "ACTIVE" | "SUSPENDED" = isActive
+      ? "SUSPENDED"
+      : "ACTIVE"
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 600))
+      const updated = await adminService.updateUserStatus(
+        customer.id,
+        nextApiStatus
+      )
 
-      const nextStatus: AccountStatus = isActive ? "Ditangguhkan" : "Aktif"
-      setCustomer((prev) => ({ ...prev, status: nextStatus }))
+      setCustomer((prev) => (prev ? { ...prev, status: updated.status } : prev))
+
       setStatusFeedback(
-        nextStatus === "Ditangguhkan"
+        nextApiStatus === "SUSPENDED"
           ? `Akun ${customer.fullName} berhasil ditangguhkan.`
           : `Akun ${customer.fullName} berhasil diaktifkan kembali.`
+      )
+      setIsConfirmOpen(false)
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "Gagal memperbarui status akun pengguna."
       )
       setIsConfirmOpen(false)
     } finally {
       setIsUpdatingStatus(false)
     }
+  }
+
+  const handleRetry = () => {
+    setIsLoading(true)
+    setFetchError(null)
+    setRefreshKey((prev) => prev + 1)
   }
 
   return (
@@ -157,6 +199,21 @@ export default function AdminUserDetailPage() {
         </div>
       </div>
 
+      {fetchError && (
+        <div className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+          <span>{fetchError}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRetry}
+            className="gap-1.5 border-red-200 bg-white text-red-700 hover:bg-red-100"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Coba Lagi
+          </Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
         <Card className="rounded-3xl border-0 bg-white shadow-none lg:col-span-8">
           <CardContent className="p-7 sm:p-9">
@@ -179,81 +236,128 @@ export default function AdminUserDetailPage() {
               </Alert>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-7">
-              <div className="flex items-center gap-4">
-                <Avatar className="h-14 w-14">
-                  <AvatarFallback className="bg-[#135D54] text-base font-bold text-white">
-                    {customer.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h2 className="text-xl font-bold tracking-tight text-[#1E293B]">
-                    {customer.fullName}
-                  </h2>
-                  <p className="mt-0.5 text-xs text-[#64748B]">
-                    @{customer.username}
-                  </p>
-                </div>
-              </div>
-
-              <Badge
-                className={cn(
-                  "rounded-full px-4 py-1 text-[11px] font-semibold shadow-none",
-                  isActive
-                    ? "bg-[#E6F4EE] text-[#135D54] hover:bg-[#E6F4EE]"
-                    : "bg-[#FDECEC] text-[#DC2626] hover:bg-[#FDECEC]"
-                )}
+            {actionError && (
+              <Alert
+                variant="destructive"
+                className="mb-6 rounded-xl border-red-200 bg-red-50 text-red-700"
               >
-                {customer.status}
-              </Badge>
-            </div>
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-xs font-medium">
+                  {actionError}
+                </AlertDescription>
+              </Alert>
+            )}
 
-            <div className="mt-7 space-y-6 text-sm">
-              <div className="grid grid-cols-1 gap-1 sm:grid-cols-12 sm:items-center sm:gap-4">
-                <span className="text-xs text-[#64748B] sm:col-span-4">
-                  Nama lengkap
-                </span>
-                <span className="text-xs font-bold text-[#1E293B] sm:col-span-8">
-                  {customer.fullName}
-                </span>
+            {isLoading ? (
+              <div className="space-y-6">
+                <div className="flex items-center gap-4 border-b border-slate-100 pb-7">
+                  <div className="h-14 w-14 animate-pulse rounded-full bg-slate-100" />
+                  <div className="space-y-2">
+                    <div className="h-5 w-44 animate-pulse rounded-lg bg-slate-100" />
+                    <div className="h-3.5 w-28 animate-pulse rounded-lg bg-slate-100" />
+                  </div>
+                </div>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <div
+                    key={n}
+                    className="h-6 w-full animate-pulse rounded-lg bg-slate-100"
+                  />
+                ))}
               </div>
+            ) : !customer ? (
+              <div className="py-12 text-center">
+                <p className="text-sm font-medium text-[#64748B]">
+                  Data pengguna tidak ditemukan.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-7">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-14 w-14">
+                      <AvatarFallback className="bg-[#135D54] text-base font-bold text-white">
+                        {getInitials(customer.fullName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h2 className="text-xl font-bold tracking-tight text-[#1E293B]">
+                        {customer.fullName}
+                      </h2>
+                      <p className="mt-0.5 text-xs text-[#64748B]">
+                        @{customer.userName}
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 gap-1 sm:grid-cols-12 sm:items-center sm:gap-4">
-                <span className="text-xs text-[#64748B] sm:col-span-4">
-                  Email
-                </span>
-                <span className="text-xs font-bold text-[#1E293B] sm:col-span-8">
-                  {customer.email}
-                </span>
-              </div>
+                  <Badge
+                    className={cn(
+                      "rounded-full px-4 py-1 text-[11px] font-semibold shadow-none",
+                      isActive
+                        ? "bg-[#E6F4EE] text-[#135D54] hover:bg-[#E6F4EE]"
+                        : "bg-[#FDECEC] text-[#DC2626] hover:bg-[#FDECEC]"
+                    )}
+                  >
+                    {statusLabel}
+                  </Badge>
+                </div>
 
-              <div className="grid grid-cols-1 gap-1 sm:grid-cols-12 sm:items-center sm:gap-4">
-                <span className="text-xs text-[#64748B] sm:col-span-4">
-                  Telepon
-                </span>
-                <span className="text-xs font-bold text-[#1E293B] sm:col-span-8">
-                  {customer.phone}
-                </span>
-              </div>
+                <div className="mt-7 space-y-6 text-sm">
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-12 sm:items-center sm:gap-4">
+                    <span className="text-xs text-[#64748B] sm:col-span-4">
+                      Nama lengkap
+                    </span>
+                    <span className="text-xs font-bold text-[#1E293B] sm:col-span-8">
+                      {customer.fullName}
+                    </span>
+                  </div>
 
-              <div className="grid grid-cols-1 gap-1 sm:grid-cols-12 sm:items-center sm:gap-4">
-                <span className="text-xs text-[#64748B] sm:col-span-4">
-                  Nomor dompet
-                </span>
-                <span className="text-xs font-bold text-[#1E293B] sm:col-span-8">
-                  {customer.walletNumber}
-                </span>
-              </div>
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-12 sm:items-center sm:gap-4">
+                    <span className="text-xs text-[#64748B] sm:col-span-4">
+                      Email
+                    </span>
+                    <span className="text-xs font-bold text-[#1E293B] sm:col-span-8">
+                      {customer.email}
+                    </span>
+                  </div>
 
-              <div className="grid grid-cols-1 gap-1 sm:grid-cols-12 sm:items-center sm:gap-4">
-                <span className="text-xs text-[#64748B] sm:col-span-4">
-                  Terdaftar sejak
-                </span>
-                <span className="text-xs font-bold text-[#1E293B] sm:col-span-8">
-                  {customer.registeredAt}
-                </span>
-              </div>
-            </div>
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-12 sm:items-center sm:gap-4">
+                    <span className="text-xs text-[#64748B] sm:col-span-4">
+                      Telepon
+                    </span>
+                    <span className="text-xs font-bold text-[#1E293B] sm:col-span-8">
+                      {customer.phoneNumber || "-"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-12 sm:items-center sm:gap-4">
+                    <span className="text-xs text-[#64748B] sm:col-span-4">
+                      Nomor dompet
+                    </span>
+                    <span className="text-xs font-bold text-[#1E293B] sm:col-span-8">
+                      {customer.wallet?.walletNumber || "Belum memiliki dompet"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-12 sm:items-center sm:gap-4">
+                    <span className="text-xs text-[#64748B] sm:col-span-4">
+                      Role
+                    </span>
+                    <span className="text-xs font-bold text-[#1E293B] sm:col-span-8">
+                      {customer.roles?.join(", ") || "CUSTOMER"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-12 sm:items-center sm:gap-4">
+                    <span className="text-xs text-[#64748B] sm:col-span-4">
+                      Terdaftar sejak
+                    </span>
+                    <span className="text-xs font-bold text-[#1E293B] sm:col-span-8">
+                      {formatRegisteredDate(customer.createdAtUtc)}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -263,39 +367,49 @@ export default function AdminUserDetailPage() {
               Status akun
             </h2>
 
-            <div className="mb-4">
-              <Badge
-                className={cn(
-                  "rounded-full px-4 py-1 text-[11px] font-semibold shadow-none",
-                  isActive
-                    ? "bg-[#E6F4EE] text-[#135D54] hover:bg-[#E6F4EE]"
-                    : "bg-[#FDECEC] text-[#DC2626] hover:bg-[#FDECEC]"
-                )}
-              >
-                {customer.status}
-              </Badge>
-            </div>
+            {isLoading ? (
+              <div className="space-y-4">
+                <div className="h-6 w-24 animate-pulse rounded-full bg-slate-100" />
+                <div className="h-10 w-full animate-pulse rounded-lg bg-slate-100" />
+                <div className="h-12 w-full animate-pulse rounded-xl bg-slate-100" />
+              </div>
+            ) : customer ? (
+              <>
+                <div className="mb-4">
+                  <Badge
+                    className={cn(
+                      "rounded-full px-4 py-1 text-[11px] font-semibold shadow-none",
+                      isActive
+                        ? "bg-[#E6F4EE] text-[#135D54] hover:bg-[#E6F4EE]"
+                        : "bg-[#FDECEC] text-[#DC2626] hover:bg-[#FDECEC]"
+                    )}
+                  >
+                    {statusLabel}
+                  </Badge>
+                </div>
 
-            <p className="text-xs leading-relaxed text-[#64748B]">
-              {isActive
-                ? "Menangguhkan akun akan membatasi akses dan transaksi."
-                : "Akun saat ini ditangguhkan dan tidak dapat melakukan transaksi."}
-            </p>
+                <p className="text-xs leading-relaxed text-[#64748B]">
+                  {isActive
+                    ? "Menangguhkan akun akan membatasi akses dan transaksi."
+                    : "Akun saat ini ditangguhkan dan tidak dapat melakukan transaksi."}
+                </p>
 
-            <div className="mt-7">
-              <Button
-                type="button"
-                onClick={() => setIsConfirmOpen(true)}
-                className={cn(
-                  "h-12 w-full cursor-pointer justify-start rounded-xl px-5 text-xs font-semibold text-white shadow-none transition-all active:scale-[0.99]",
-                  isActive
-                    ? "bg-[#B54334] hover:bg-[#9E382B]"
-                    : "bg-[#135D54] hover:bg-[#0F4C44]"
-                )}
-              >
-                {isActive ? "Tangguhkan akun" : "Aktifkan kembali akun"}
-              </Button>
-            </div>
+                <div className="mt-7">
+                  <Button
+                    type="button"
+                    onClick={() => setIsConfirmOpen(true)}
+                    className={cn(
+                      "h-12 w-full cursor-pointer justify-start rounded-xl px-5 text-xs font-semibold text-white shadow-none transition-all active:scale-[0.99]",
+                      isActive
+                        ? "bg-[#B54334] hover:bg-[#9E382B]"
+                        : "bg-[#135D54] hover:bg-[#0F4C44]"
+                    )}
+                  >
+                    {isActive ? "Tangguhkan akun" : "Aktifkan kembali akun"}
+                  </Button>
+                </div>
+              </>
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -307,9 +421,10 @@ export default function AdminUserDetailPage() {
               {isActive ? "Tangguhkan akun?" : "Aktifkan kembali akun?"}
             </DialogTitle>
             <DialogDescription className="text-xs leading-relaxed text-[#64748B]">
-              {isActive
-                ? `Apakah Anda yakin ingin menangguhkan akun ${customer.fullName} (@${customer.username})? Pengguna tidak akan bisa masuk atau bertransaksi selama ditangguhkan.`
-                : `Apakah Anda yakin ingin mengaktifkan kembali akun ${customer.fullName} (@${customer.username})?`}
+              {customer &&
+                (isActive
+                  ? `Apakah Anda yakin ingin menangguhkan akun ${customer.fullName} (@${customer.userName})? Pengguna tidak akan bisa masuk atau bertransaksi selama ditangguhkan.`
+                  : `Apakah Anda yakin ingin mengaktifkan kembali akun ${customer.fullName} (@${customer.userName})?`)}
             </DialogDescription>
           </DialogHeader>
 

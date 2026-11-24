@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import UseAuth from "@/hooks/use-auth"
 import { resolveDestination } from "@/lib/auth-route"
 import { ApiError } from "@/service/auth-api"
+import { tokenStorage } from "@/lib/api"
 
 interface LocationState {
   from?: { pathname: string }
@@ -57,6 +58,9 @@ export default function LoginPage() {
     setIsLoading(true)
     try {
       const session = await login({ identifier, password })
+      if (session?.accessToken) {
+        tokenStorage.set(session.accessToken)
+      }
       navigate(resolveDestination(session.user.role, state?.from?.pathname), {
         replace: true,
       })

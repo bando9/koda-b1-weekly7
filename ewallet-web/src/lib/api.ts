@@ -69,8 +69,12 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null)
+    const identityErrors = Array.isArray(errorBody?.errors)
+      ? errorBody.errors.join(" ")
+      : null
     throw new Error(
-      errorBody?.message ??
+      identityErrors ??
+        errorBody?.message ??
         errorBody?.detail ??
         "Terjadi kesalahan pada server."
     )
