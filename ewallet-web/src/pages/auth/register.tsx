@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ApiError } from "@/service/auth-api"
+import { ApiError, registerUser } from "@/service/auth-api"
 
 interface RegisterFieldErrors {
   fullName?: string
@@ -87,7 +87,13 @@ export default function RegisterPage() {
 
     setIsLoading(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 650))
+      await registerUser({
+        fullName: fullName.trim(),
+        userName: username.trim(),
+        email: email.trim(),
+        phoneNumber: phone.trim(),
+        password,
+      })
 
       navigate("/login", {
         replace: true,

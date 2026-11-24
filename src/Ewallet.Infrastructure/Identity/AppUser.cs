@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Ewallet.Infrastructure.Identity;
 
-public sealed class AppUser : IdentityUser<long> // *Beda (long=>Guid)
+public sealed class AppUser : IdentityUser<long>
 {
     public string FullName {get;set;} =string.Empty;
     public UserStatusEnum Status {get;set;} = UserStatusEnum.ACTIVE;
