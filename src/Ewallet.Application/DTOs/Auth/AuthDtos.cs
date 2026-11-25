@@ -8,7 +8,7 @@ public sealed record RegisterRequest
     [Required,MinLength(4), MaxLength(50)] string UserName,
     [Required,EmailAddress, MaxLength(150)] string Email,
     [Required,Phone, MaxLength(20)] string PhoneNumber,
-    [Required,MinLength(8)] string Password // TODO: PasswordHash
+    [Required,MinLength(8)] string Password
 );
 
 public sealed record LoginRequest(

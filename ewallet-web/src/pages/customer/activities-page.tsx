@@ -15,7 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-// import type { UserProfileDto } from "
 import {
   dashboardService,
   type TransactionDto,
@@ -91,7 +90,6 @@ export default function ActivitiesPage() {
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState<number>(0)
 
-  // Debounce search input 350ms
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery)
@@ -99,7 +97,6 @@ export default function ActivitiesPage() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  // Ambil profil jika context dari layout belum tersedia
   useEffect(() => {
     if (context?.displayName) return
     let isCancelled = false
@@ -109,16 +106,13 @@ export default function ActivitiesPage() {
       .then((res) => {
         if (!isCancelled) setProfile(res)
       })
-      .catch(() => {
-        // Fallback ke default jika gagal
-      })
+      .catch(() => {})
 
     return () => {
       isCancelled = true
     }
   }, [context?.displayName])
 
-  // Fetch daftar transaksi dari backend setiap filter/halaman berubah
   useEffect(() => {
     let isCancelled = false
 

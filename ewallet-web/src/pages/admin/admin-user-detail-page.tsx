@@ -67,7 +67,6 @@ export default function AdminUserDetailPage() {
   const [statusFeedback, setStatusFeedback] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  // Ambil profil admin yang login
   useEffect(() => {
     let isCancelled = false
 
@@ -83,7 +82,6 @@ export default function AdminUserDetailPage() {
     }
   }, [])
 
-  // Ambil detail user dari GET /api/v1/admin/users/{id}
   useEffect(() => {
     let isCancelled = false
     const numericId = Number(userId)

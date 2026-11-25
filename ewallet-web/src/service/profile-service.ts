@@ -1,4 +1,3 @@
-// src/services/profileService.ts
 import { apiFetch } from "@/lib/api"
 import type { UserProfileDto } from "./dashboard-service"
 

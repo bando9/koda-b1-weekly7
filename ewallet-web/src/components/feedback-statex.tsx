@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 export function LoadingState({
   title = "Memuat data...",
   description = "Mohon tunggu sebentar, kami sedang menyiapkan informasi untukmu.",
-  variant = "spinner", // "spinner" | "skeleton"
+  variant = "spinner",
 }) {
   if (variant === "skeleton") {
     return (

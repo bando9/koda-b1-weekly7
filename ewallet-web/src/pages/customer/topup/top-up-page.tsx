@@ -35,7 +35,6 @@ export default function TopUpPage() {
   const [rawAmount, setRawAmount] = useState<string>("")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // 1. Ambil Wallet & Daftar Payment Methods dari Backend
   useEffect(() => {
     let isCancelled = false
 
@@ -91,7 +90,6 @@ export default function TopUpPage() {
     if (errorMessage) setErrorMessage(null)
   }
 
-  // 2. Submit Top Up menggunakan selectedMethodId dari database
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setErrorMessage(null)
@@ -115,7 +113,6 @@ export default function TopUpPage() {
         amount: numericAmount,
       })
 
-      // Arahkan ke halaman QRIS jika code metode adalah QRIS
       if (chosenMethod.code.toUpperCase() === "QRIS") {
         navigate("/dashboard/top-up/qris", {
           state: {
@@ -129,7 +126,6 @@ export default function TopUpPage() {
         return
       }
 
-      // Selain QRIS (Virtual Account / Retail), arahkan ke halaman konfirmasi
       navigate("/dashboard/top-up/confirm", {
         state: {
           topUpRequestId: createdTopUp.topUpRequestId,
@@ -228,7 +224,6 @@ export default function TopUpPage() {
                 </div>
               </div>
 
-              {/* 3. Render Metode Pembayaran Dinamis dari Backend */}
               <div className="space-y-3">
                 <Label className="block text-xs font-semibold text-[#64748B]">
                   Metode pembayaran

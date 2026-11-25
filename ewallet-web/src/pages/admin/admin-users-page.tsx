@@ -53,7 +53,6 @@ export default function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState<number>(0)
 
-  // Ambil profil admin yang login
   useEffect(() => {
     let isCancelled = false
 
@@ -69,7 +68,6 @@ export default function AdminUsersPage() {
     }
   }, [])
 
-  // Fetch daftar pengguna dari backend (GET /api/v1/admin/users)
   useEffect(() => {
     let isCancelled = false
 

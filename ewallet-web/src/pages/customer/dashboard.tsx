@@ -84,33 +84,6 @@ export default function CustomerDashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
-  // const loadDashboardData = async () => {
-  //   try {
-  //     setIsLoading(true)
-  //     setError(null)
-
-  //     const [profileRes, walletRes, txRes] = await Promise.all([
-  //       dashboardService.getProfile(),
-  //       dashboardService.getMyWallet(),
-  //       dashboardService.getRecentTransactions(1, 5),
-  //     ])
-
-  //     setProfile(profileRes)
-  //     setWallet(walletRes)
-  //     setTransactions(txRes.items)
-  //   } catch (err) {
-  //     setError(
-  //       err instanceof Error ? err.message : "Gagal memuat data dashboard."
-  //     )
-  //   } finally {
-  //     setIsLoading(false)
-  //   }
-  // }
-
-  // useEffect(() => {
-  //   loadDashboardData()
-  // }, [])
-
   useEffect(() => {
     let isCancelled = false
 

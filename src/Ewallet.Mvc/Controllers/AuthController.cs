@@ -163,7 +163,7 @@ public sealed class AuthController(
             ExpiresAtUtc: session.AccessToken.ExpiredAtUtc));
     }
 
-    // LOGOUT
+    // *LOGOUT
     [AllowAnonymous]
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

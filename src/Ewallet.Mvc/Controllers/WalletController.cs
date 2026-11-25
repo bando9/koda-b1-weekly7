@@ -77,7 +77,6 @@ public sealed class WalletController(
             .AsNoTracking()
             .Where(t => t.SenderWalletId == wallet.Id || t.ReceiverWalletId == wallet.Id);
 
-        // 1. Filter pencarian nomor referensi atau deskripsi
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
@@ -127,7 +126,7 @@ public sealed class WalletController(
         return Ok(new { items, page, pageSize, totalCount });
     }
 
-    // GET /api/v1/wallets/me/transactions/{transactionId} -> Detail transaksi (hanya jika terlibat)
+
     [HttpGet("me/transactions/{transactionId:long}")]
     public async Task<IActionResult> GetMyTransactionDetail(long transactionId, CancellationToken ct)
     {
@@ -143,7 +142,6 @@ public sealed class WalletController(
         if (tx is null)
             return NotFound(new { message = "Transaksi tidak ditemukan." });
 
-        // Pastikan transaksi ini milik wallet user yang sedang login
         if (tx.SenderWalletId != wallet.Id && tx.ReceiverWalletId != wallet.Id)
             return Forbid();
 

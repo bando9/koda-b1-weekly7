@@ -33,31 +33,10 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// var connectionString = builder.Configuration.GetConnectionString("newEwallet") 
-//     ?? throw new InvalidOperationException("ga bisa koneksi, belum konfigurasi");
-
-// builder.Services.AddDbContext<AppDbContext>(options =>
-// {
-//         .UseSeeding((context, _) =>
-//         {
-//             PaymentMethodSeedData.Seed(context);
-//             // UserWalletSeedData.Seed(context);
-//             TransactionSeedData.Seed(context);
-//         })
-//         .UseAsyncSeeding(async (context, _, ct) =>
-//         {
-//             await PaymentMethodSeedData.SeedAsync(context, ct);
-//             // await UserWalletSeedData.SeedAsync(context, ct);
-//             await TransactionSeedData.SeedAsync(context, ct);
-//         });
-// });
-
-
 
 // *Service
 builder.Services.AddScoped<IPaymentMethodService, PaymentMethodService>();
 builder.Services.AddScoped<ITopUpService, TopUpService>();
-// builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IHistoryService, HistoryService>();
 builder.Services.AddScoped<ITransferService, TransferService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();

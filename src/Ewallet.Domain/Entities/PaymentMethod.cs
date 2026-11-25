@@ -9,7 +9,6 @@ public sealed class PaymentMethod
     public bool IsActive {get; private set;}
     public DateTime CreatedAtUtc {get; private set;}
 
-    // constraint topup reques
     public ICollection<TopUpRequest> TopUpRequests {get; private set;} = new List<TopUpRequest>();
 
     public PaymentMethod(int id, string code, string name, string? providerName, bool isActive, DateTime createdAtUtc)

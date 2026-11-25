@@ -22,7 +22,6 @@ public sealed class AuditLog
 
     // Foreign Key
     public long? ActorUserId {get; private set;}
-    // public User? ActorUser {get; private set;}
     public long? TransactionId {get; private set;}
     public Transaction? Transaction {get; private set;}
 

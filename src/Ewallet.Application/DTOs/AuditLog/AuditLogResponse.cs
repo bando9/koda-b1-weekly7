@@ -23,31 +23,4 @@ public sealed record PagedResultLogs<T>(
 );
 
 
-// public sealed record AuditLogResponse(
-//     long Id,
-//     string Action,
-//     string EntityType,
-//     string? EntityId,
-//     string Outcome,
-//     string? Description,
-//     string? CorrelationId,
-//     long? ActorUserId,
-//     long? TransactionId,
-//     DateTime CreatedAtUtc
-// )
-// {
-//     public static AuditLogResponse FromModel(AuditLog log) => new(
-//         log.Id,
-//         log.Action,
-//         log.EntityType,
-//         log.EntityId,
-//         log.Outcome.ToString(),
-//         log.Description,
-//         log.CorrelationId,
-//         log.ActorUserId,
-//         log.TransactionId,
-//         log.CreatedAtUtc
-//     );
-// }
-
 

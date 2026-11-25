@@ -1,6 +1,221 @@
 # E-Wallet System (.NET / ASP.NET Core & EF Core)
 
-Aplikasi manajemen dompet digital (_E-Wallet_) berbasis ASP.NET Core dan Entity Framework Core dengan SQL Server. Sistem ini mendukung registrasi pengguna, pengelolaan dompet beserta proteksi _optimistic concurrency_ (`RowVersion`), _top-up_ melalui berbagai metode pembayaran, transfer antar-pengguna, pencatatan mutasi saldo (`IN`/`OUT`), serta _audit logging_.
+Aplikasi dompet digital (_E-Wallet_) berbasis **ASP.NET Core** (Backend REST API) dan **React + TypeScript** (Frontend SPA) yang mendukung manajemen saldo, Top Up, Transfer antar pengguna, riwayat mutasi, Role-Based Access Control (RBAC), serta moderasi pengguna oleh Admin dengan pencatatan _Audit Log_.
+
+## Technologies
+
+- **Backend:**
+  - .NET 10 / ASP.NET Core Web API & MVC
+  - Entity Framework Core
+  - ASP.NET Core Identity
+  - SQL Server
+  - JWT Bearer Authentication
+  - Scalar OpenAPI.
+- **Frontend:**
+  - React
+  - TypeScript
+  - Vite
+  - Tailwind CSS
+  - shadcn/ui
+  - Base UI
+  - React Router.
+
+## Instalasi & Menjalankan Proyek
+
+### 1. Prasyarat
+
+- [.NET SDK 10.0+](https://dotnet.microsoft.com/download)
+- [Node.js 20+](https://nodejs.org/)
+- SQL Server (LocalDB / SQL Server Express / Docker)
+
+### 2. Menjalankan Backend (`Ewallet.Mvc`)
+
+1. Masuk ke direktori backend:
+   ```bash
+   cd Ewallet.Mvc
+   ```
+2. Pulihkan (_restore_) seluruh NuGet package/dependency:
+   ```bash
+   dotnet restore
+   ```
+3. Sesuaikan _connection string_ SQL Server dan konfigurasi JWT di `appsettings.json` atau `appsettings.Development.json`:
+   ```json
+   {
+     "ConnectionStrings": {
+       "DefaultConnection": "Server=localhost;Database=KodaWalletDb;Trusted_Connection=True;TrustServerCertificate=True;"
+     },
+     "Jwt": {
+       "Issuer": "KodaWallet",
+       "Audience": "KodaWalletClient",
+       "Key": "GANTI_DENGAN_SECRET_KEY_MINIMAL_32_KARAKTER"
+     }
+   }
+   ```
+4. Jalankan server backend:
+   ```bash
+   dotnet run
+   ```
+   Backend akan berjalan pada `http://localhost:5138` dan dokumentasi API interaktif dapat diakses di `http://localhost:5138/scalar/`.
+
+### 3. Menjalankan Frontend (React)
+
+1. Masuk ke direktori frontend:
+   ```bash
+   cd frontend
+   ```
+2. Install seluruh dependency/package:
+   ```bash
+   npm install
+   # atau jika menggunakan bun:
+   # bun install
+   ```
+3. Pastikan file `.env` mengarah ke URL backend:
+   ```env
+   VITE_API_BASE_URL=http://localhost:5138/api/v1
+   ```
+4. Jalankan server pengembangan React:
+   ```bash
+   npm run dev
+   # atau:
+   # bun run dev
+   ```
+   Aplikasi frontend dapat diakses melalui browser di `http://localhost:5173`.
+
+## Database Migration & Seeding
+
+### 1. Membuat & Menerapkan EF Core Migration
+
+Pastikan `dotnet-ef` CLI sudah terpasang (`dotnet tool install --global dotnet-ef`), lalu jalankan perintah berikut dari root solution:
+
+```bash
+# Membuat migration baru
+dotnet ef migrations add InitialIdentityMigration --project Ewallet.Infrastructure --startup-project Ewallet.Mvc
+
+# Menerapkan seluruh migration ke SQL Server
+dotnet ef database update --project Ewallet.Infrastructure --startup-project Ewallet.Mvc
+```
+
+### 2. Data Seeding
+
+Saat aplikasi dijalankan ('dotnet run'), seeder otomatis membuat data awal :
+
+- **Roles:** `CUSTOMER` dan `ADMIN` pada tabel `AspNetRoles`.
+- **Akun Admin Default:** Akun dengan role `ADMIN` untuk mengakses dashboard administrasi.
+- **Payment Methods:** Metode pembayaran simulasi (`VA_BCA`, `VA_MANDIRI`, `QRIS`, `RETAIL_ALFA`) pada tabel `PaymentMethods`.
+
+## Perubahan Arsitektur Tabel (`Users` ke `AspNetUsers`)
+
+- Saat pertama sistem menggunakan table `Users` custom dg mengelola password manual, blm ada hashing, jadi perlu hashing manual menambahkan package tambahan.
+- Setelah menggunakan **ASP.NET Core Identity** dg entitas `AppUser: IdentityUser<long>`, tabel pengguna berubah menjadi `AspNetUsers` beserta table bawaan yg otomatis dibuat:
+  - `dbo.AspNetRoleClaims`
+  - dbo.AspNetRoles
+  - dbo.AspNetUserClaims;
+  - dbo.AspNetUserLogins;
+  - dbo.AspNetUserRoles;
+  - dbo.AspNetUsers;
+  - dbo.AspNetUserTokens;
+
+- **Keamanan Password Terstandar:** Password tidak lagi di-hash secara manual, melainkan dikelola oleh `PasswordHasher<AppUser>` bawaan Identity (PBKDF2 dengan _salt_ unik per pengguna).
+- **Manajemen Role & Policy Terintegrasi:** Relasi pengguna ke role (`CUSTOMER` dan `ADMIN`) tersimpan terstruktur di `AspNetUserRoles` dan terhubung langsung dengan klaim JWT serta `AuthorizationPolicy`.
+- **Kustomisasi Properti Bisnis:** Entitas `AppUser` tetap mempertahankan atribut domain E-Wallet seperti `FullName`, `Status` (`ACTIVE` / `SUSPENDED`), `CreatedAtUtc`, dan relasi `1-to-1` ke tabel `Wallets` (`UserId` merujuk ke `AspNetUsers.Id`).
+
+## Hak Akses & Authorization Policy (`CUSTOMER` vs `ADMIN`)
+
+Pembatasan akses diterapkan menggunakan **Role-Based Authorization** dan **Authorization Policy** (`AppPolicies`) pada ASP.NET Core:
+
+| Policy Name                   | Role yang Diizinkan | Cakupan Fitur & Hak Akses                                                                                                                                                              |
+| :---------------------------- | :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`CanAccessCustomerWallet`** | `CUSTOMER`          | Melihat informasi wallet, nomor dompet, saldo, dan riwayat mutasi transaksi milik sendiri.                                                                                             |
+| **`CanPerformTransactions`**  | `CUSTOMER`          | Membuat permintaan Top Up, mengonfirmasi pembayaran Top Up, serta melakukan Transfer saldo ke sesama `CUSTOMER`.                                                                       |
+| **`CanManageUsers`**          | `ADMIN`             | Melihat ringkasan statistik pengguna, mencari/memfilter daftar pengguna, melihat detail akun pengguna, dan mengubah status akun (`ACTIVE` / `SUSPENDED`) yang tercatat di `AuditLogs`. |
+| **`[Authorize]` (Umum)**      | `CUSTOMER`, `ADMIN` | Mengakses dan memperbarui informasi profil pribadi serta mengganti kata sandi akun sendiri.                                                                                            |
+
+Notes:
+
+- Role `ADMIN` tidak memiliki akses ke policy `CanPerformTransactions` maupun `CanAccessCustomerWallet`, sehingga Admin dilarang memindahkan saldo milik `CUSTOMER` secara bebas.
+
+## Cara Pengujian
+
+### 1. Pengujian Alur `CUSTOMER`
+
+1. Buka `http://localhost:5173/register` dan daftarkan dua akun customer baru (misalnya **User A** dan **User B**).
+2. Login sebagai **User A**, buka menu **Isi Saldo (Top Up)**, pilih metode pembayaran (misal _Mandiri Virtual Account_ atau _QRIS_), lalu lanjutkan ke halaman konfirmasi dan klik **Simulasikan pembayaran**.
+3. Pastikan saldo **User A** bertambah di halaman **Beranda (Dashboard)** dan tercatat di halaman **Aktivitas**.
+4. Buka menu **Transfer**, masukkan nomor dompet **User B** dan nominal transfer, lalu konfirmasi. Pastikan saldo **User A** berkurang, saldo **User B** bertambah, dan kedua mutasi tercatat.
+5. Coba akses URL `/admin` menggunakan akun **User A** $\rightarrow$ sistem harus menolak akses (`403 Forbidden` / diarahkan keluar dari area admin).
+
+### 2. Pengujian Alur `ADMIN`
+
+1. Login menggunakan akun dengan role **`ADMIN`**.
+2. Akses `/admin` untuk melihat statistik pengguna dan daftar pendaftar terbaru.
+3. Buka menu **Pengguna** (`/admin/users`), uji fitur pencarian nama/email dan filter status (`Aktif` / `Ditangguhkan`).
+4. Klik **Detail** pada akun **User A**, ubah statusnya menjadi **Ditangguhkan (`SUSPENDED`)**, lalu periksa tabel `AuditLogs` di database untuk memastikan log `ADMIN_USER_STATUS_UPDATED` tercatat.
+5. Coba akses endpoint `POST /api/v1/transfers` melalui Scalar/Postman menggunakan token `ADMIN` $\rightarrow$ server harus mengembalikan status **`403 Forbidden`**.
+
+## Daftar Endpoint API
+
+Base URL: `http://localhost:5138/api/v1`
+
+### 1. Authentication (`/auth`)
+
+| Method | Endpoint         | Akses         | Deskripsi                                                                      |
+| :----- | :--------------- | :------------ | :----------------------------------------------------------------------------- |
+| `POST` | `/auth/register` | Public        | Registrasi akun `CUSTOMER` baru beserta pembuatan `Wallet` otomatis.           |
+| `POST` | `/auth/login`    | Public        | Autentikasi pengguna dan menghasilkan JWT Access Token + Refresh Token cookie. |
+| `POST` | `/auth/refresh`  | Public        | Memperbarui Access Token menggunakan Refresh Token.                            |
+| `POST` | `/auth/logout`   | Authenticated | Mencabut sesi aktif dan menghapus token.                                       |
+
+### 2. Profile (`/profile`)
+
+| Method | Endpoint                   | Akses         | Deskripsi                                               |
+| :----- | :------------------------- | :------------ | :------------------------------------------------------ |
+| `GET`  | `/profile`                 | Authenticated | Mengambil data profil pengguna yang sedang login.       |
+| `PUT`  | `/profile`                 | Authenticated | Memperbarui `fullName` dan `phoneNumber` pengguna.      |
+| `POST` | `/profile/change-password` | Authenticated | Mengubah kata sandi akun dengan validasi password lama. |
+
+### 3. Wallet, Top Up & Transfer (Khusus `CUSTOMER`)
+
+| Method | Endpoint                   | Policy                    | Deskripsi                                                                                         |
+| :----- | :------------------------- | :------------------------ | :------------------------------------------------------------------------------------------------ |
+| `GET`  | `/wallets/me`              | `CanAccessCustomerWallet` | Mengambil detail dompet dan saldo terkini milik user login.                                       |
+| `GET`  | `/wallets/me/transactions` | `CanAccessCustomerWallet` | Riwayat transaksi dengan filter `search`, `type`, `status`, `days`, dan pagination.               |
+| `GET`  | `/payment-methods`         | Public                    | Mengambil daftar metode pembayaran Top Up yang aktif.                                             |
+| `POST` | `/topups`                  | `CanPerformTransactions`  | Membuat permintaan Top Up baru dengan status awal `PENDING`.                                      |
+| `GET`  | `/topups/{id}`             | `CanPerformTransactions`  | Melihat detail transaksi Top Up (hanya milik sendiri).                                            |
+| `POST` | `/topups/{id}/confirm`     | `CanPerformTransactions`  | Simulasi konfirmasi pembayaran Top Up (`PENDING` $\rightarrow$ `SUCCESS`) & menambah saldo.       |
+| `POST` | `/transfers`               | `CanPerformTransactions`  | Melakukan transfer saldo ke nomor dompet tujuan dengan validasi saldo & _optimistic concurrency_. |
+
+### 4. Admin User Management (Khusus `ADMIN`)
+
+| Method  | Endpoint                   | Policy           | Deskripsi                                                                                      |
+| :------ | :------------------------- | :--------------- | :--------------------------------------------------------------------------------------------- |
+| `GET`   | `/admin/users/summary`     | `CanManageUsers` | Statistik total pengguna, akun aktif, akun ditangguhkan, dan pendaftar bulan ini.              |
+| `GET`   | `/admin/users`             | `CanManageUsers` | Daftar pengguna dengan fitur `search`, filter `status` (`ACTIVE`/`SUSPENDED`), dan pagination. |
+| `GET`   | `/admin/users/{id}`        | `CanManageUsers` | Melihat informasi detail akun dan dompet pengguna tertentu.                                    |
+| `PATCH` | `/admin/users/{id}/status` | `CanManageUsers` | Mengubah status akun (`ACTIVE` / `SUSPENDED`) dan mencatat aktivitas ke `AuditLogs`.           |
+
+## Basic Knowledge
+
+## Perbedaan Authentication vs Authorization
+
+- **Authentication (Autentikasi):**
+  - Sistem memverifikasi **siapa** user yg mengakses sistem yg dibuktikan melalui email/username & password saat login. Bukti identitas sah berupa token.
+- **Authorization (Otorisasi):**
+  - Sistem menentukan **apa saja yg boleh dilakukan** oleh user sudah terautentikasi berdasarkan role / policy yg dimilikinya. misal `ADMIN` bisa mengubah status akun user, dan `CUSTOMER` yg boleh melakukan transaksi (topup dan transfer).
+
+### Fungsi JWT (JSON Web Token)
+
+- JWT berfungsi sbg token identitas yg dikirimkan oleh client pada header `Authorization: Bearer <token>` di setiap permintaan API.
+- JWT membawa header, payload dan signature. Dalam payload JWT tersimpan klaim terenkripsi seperti `sub` (user id) dan `role` (CUSTOMER / ADMIN), sehingga backend dapat memvalidasi identitas dan hak akses user secara cepat tanpa perlu menyimpan sesi memori server, sekaligus mencegah pemalsuan ID pengguna.
+
+### Alasan Penggunaan ASP.NET Core Identity
+
+- ASP.NET Core Identity digunakan untuk menghindari penulisan logika keamanan sensitif dari nol.
+- Identity menyediakan **password hashing** modern (PBKDF2 dengan _salt_), manajemen role dan klaim terstruktur, validasi kompleksitas kata sandi, perlindungan akun (_lockout_), serta integrasi langsung dengan `UserManager`, `RoleManager`, dan _middleware_ otorisasi ASP.NET Core.
+
+### Mengapa Frontend Role Protection Tidak Cukup Tanpa Authorization Backend
+
+Proteksi rute di React (seperti menyembunyikan menu Admin atau _redirect_ komponen berdasarkan state `user.role`) hanya berjalan di sisi browser pengguna. Kode JavaScript di browser dapat dengan mudah dimodifikasi melalui DevTools, atau seseorang dapat menembak endpoint API backend secara langsung menggunakan Postman, `curl`, atau script tanpa melewati antarmuka React. Oleh karena itu, **Authorization di Backend** wajib diterapkan sebagai gerbang keamanan utama yang memvalidasi token dan role pada setiap _request_ HTTP sebelum menyentuh logika bisnis maupun database.
 
 ## Perbedaan Transactions, WalletMutations, dan AuditLogs
 
@@ -17,116 +232,6 @@ Aplikasi manajemen dompet digital (_E-Wallet_) berbasis ASP.NET Core dan Entity 
 - Database Transaction (`BeginTransactionAsync`) digunakan ketika transaksi melibatkan banyak langkah sekaligus. Misal transfer, melibatkan pengurangan saldo, menambah saldo, mengubah status transaksi, membuat 2 mutasi saldo, dan mencatat log. Dg membungkusnya dalam database transaction, semua proses bersifat _all-or-nothing_, jika satu langkah gagal, seluruh perubahan di-_rollback_ sehingga tidak akan pernah terjadi kasus saldo pengirim terpotong tetapi saldo penerima tidak bertambah.
 
 - `RowVersion` berfungsi sbg penanda versi baris data di table Wallets yg otomatis berubah setiap kali baris tersebut di-update oleh SQL Server. Jika 2 transaksi mencoba memotong saldo wallet di waktu yg sama, transaksi pertama berhasil memperbarui `RowVersion`, sementara transaksi kedua akan otomatis digagalkan oleh EF Core(DbUpdateCurrencyException) karena RowVersion yang dibawa sudah usang/kadaluarsa, sehingga saldo tidak akan pernah minus / salah hitung.
-
-## Technologies
-
-- **Framework:** .NET 10 / ASP.NET Core (Web API)
-- **ORM:** Entity Framework Core (Code-First)
-- **Database:** Microsoft SQL Server
-- **Error Handling:** Global Exception Handler
-- **Scalar** OpenAPI
-
-## Getting Started
-
-### Prasyarat
-
-- [.NET SDK](https://dotnet.microsoft.com/download) (versi 10.0)
-- [SQL Server](https://www.microsoft.com/sql-server)
-- EF Core CLI Tools:
-  ```bash
-  dotnet tool install --global dotnet-ef
-  ```
-
-## Cara Menjalankan Aplikasi
-
-1. **Clone repository & masuk ke direktori proyek:**
-
-   ```bash
-   git clone https://github.com/bando9/koda-b1-weekly6
-   cd koda-b1-weekly6
-   ```
-
-2. **Konfigurasi Connection String:**
-   Buka file `appsettings.json` (atau `appsettings.Development.json`) dan sesuaikan `DefaultConnection` dengan kredensial SQL Server lokalmu:
-
-   ```json
-   {
-     "ConnectionStrings": {
-       "DefaultConnection": "Server=localhost;Database=EwalletDb;Trusted_Connection=True;TrustServerCertificate=True;"
-     }
-   }
-   ```
-
-3. **Restore dependencies & jalankan aplikasi:**
-   ```bash
-   dotnet restore
-   dotnet run
-   ```
-   Aplikasi akan berjalan pada alamat yang tertera di terminal (misalnya `http://localhost:5000`).
-
-## Database Migration
-
-Skema database dikelola menggunakan EF Core Code-First Migrations dengan _check constraints_, _unique indexes_, dan konfigurasi relasi di `AppDbContext`.
-
-- **Membuat migration baru** (jika ada perubahan pada model):
-
-  ```bash
-  dotnet ef migrations add <NamaMigration>
-  ```
-
-- **Menerapkan migration ke database:**
-
-  ```bash
-  dotnet ef database update
-  ```
-
-- **Reset ulang database dari awal**
-  _(opsional, untuk membersihkan data dummy)_:
-  ```bash
-  dotnet ef database drop -f
-  dotnet ef database update
-  ```
-
-## Data Seeding
-
-Aplikasi menerapkan **Idempotent Runtime Seeding** melalui `UseSeeding` dan `UseAsyncSeeding` pada konfigurasi `AppDbContext` di `Program.cs`. Data awal akan otomatis diisi saat perintah `dotnet ef database update` dijalankan atau saat aplikasi melakukan migrasi saat _startup_.
-
-### Cakupan Data Seeding:
-
-1. **`PaymentMethodSeedData`:** 4 metode pembayaran aktif (`VA_BCA`, `VA_MANDIRI`, `QRIS`, `RETAIL_ALFA`).
-2. **`UserWalletSeedData`:** 10 pengguna aktif (`andi.pratama` hingga `joko.susilo`) beserta 10 wallet dengan saldo awal **Rp0**.
-3. **`TransactionSeedData`:** Simulasi transaksi _top-up_ dan transfer (dengan status `SUCCESS`, `PENDING`, dan `FAILED`), pembuatan `TopUpRequest`, mutasi saldo (`WalletMutation`), pencatatan `AuditLog`, serta penyesuaian saldo akhir wallet secara otomatis.
-
-### Ringkasan Saldo Akhir Hasil Seeding:
-
-| Username        | No. Wallet |   Top-Up Sukses | Transfer Keluar | Transfer Masuk |   Saldo Akhir |
-| :-------------- | :--------- | --------------: | --------------: | -------------: | ------------: |
-| `andi.pratama`  | `W-0001`   |       Rp500.000 |      -Rp150.000 |            Rp0 | **Rp350.000** |
-| `budi.santoso`  | `W-0002`   |       Rp300.000 |      -Rp100.000 |            Rp0 | **Rp200.000** |
-| `citra.lestari` | `W-0003`   |     Rp1.000.000 |      -Rp400.000 |            Rp0 | **Rp600.000** |
-| `dimas.wijaya`  | `W-0004`   | Rp0 _(Pending)_ |             Rp0 |     +Rp150.000 | **Rp150.000** |
-| `eka.putri`     | `W-0005`   |  Rp0 _(Failed)_ |             Rp0 |     +Rp400.000 | **Rp400.000** |
-| `fajar.nugroho` | `W-0006`   |             Rp0 |             Rp0 |     +Rp100.000 | **Rp100.000** |
-| `gita.permata`  | `W-0007`   |             Rp0 |             Rp0 | Rp0 _(Failed)_ |       **Rp0** |
-| `hendra.kusuma` | `W-0008`   |             Rp0 |             Rp0 |            Rp0 |       **Rp0** |
-| `indah.sari`    | `W-0009`   |             Rp0 |             Rp0 |            Rp0 |       **Rp0** |
-| `joko.susilo`   | `W-0010`   |             Rp0 |             Rp0 |            Rp0 |       **Rp0** |
-
-## API Endpoints
-
-Base URL: `/api/v1`
-
-| Endpoint Path                            | HTTP Method | Description                         | Available |
-| ---------------------------------------- | ----------- | ----------------------------------- | --------- |
-| `/api/v1/users`                          | GET         | Get all users                       | ✅        |
-| `/api/v1/users/{id}`                     | GET         | Get user+wallet detail by user ID   | ✅        |
-| `/api/v1/users`                          | POST        | Create user and initialize wallet   | ✅        |
-| `/api/v1/users/{id}`                     | PUT         | Update user profile                 |           |
-| `/api/v1/users/{id}`                     | DELETE      | Delete user by ID                   |           |
-| `/api/v1/topup/`                         | POST        | Top up wallet by wallet ID (body)   | ✅        |
-| `/api/v1/topup/{topuprequestId}/confirm` | POST        | Confirm top up by top up request ID | ✅        |
-| `/api/v1/transfers`                      | POST        | Transfer balance to another wallet  | ✅        |
-| `/api/v1/users/{userId}/transactions`    | GET         | Get user transaction history        | ✅        |
 
 ## Entity Relationship Diagram (ERD)
 

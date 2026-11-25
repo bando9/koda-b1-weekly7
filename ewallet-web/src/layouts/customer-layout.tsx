@@ -128,16 +128,13 @@ export default function CustomerLayout() {
           setProfile(res)
         }
       })
-      .catch(() => {
-        // Fallback ke data dari UseAuth() jika request gagal
-      })
+      .catch(() => {})
 
     return () => {
       isCancelled = true
     }
   }, [])
 
-  // Prioritaskan fullName dari backend (/api/v1/profile), lalu dari AuthContext
   const authUser = user as {
     fullName?: string
     name?: string

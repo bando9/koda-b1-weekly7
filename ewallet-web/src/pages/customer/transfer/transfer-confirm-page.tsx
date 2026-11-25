@@ -28,7 +28,6 @@ export default function TransferConfirmPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // Redirect ke form transfer jika halaman dibuka langsung tanpa state
   if (!receiverWalletNumber || amount <= 0) {
     return <Navigate to="/dashboard/transfer" replace />
   }
@@ -45,7 +44,6 @@ export default function TransferConfirmPage() {
 
     setIsSubmitting(true)
     try {
-      // Panggil backend POST /api/v1/transfers
       const result = await transferService.createTransfer({
         receiverWalletNumber,
         amount,
