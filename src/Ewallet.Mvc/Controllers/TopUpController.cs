@@ -1,4 +1,5 @@
 ﻿using Ewallet.Application.DTOs;
+using Ewallet.Application.Security;
 using Ewallet.Application.Services;
 using Ewallet.Mvc.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -14,6 +15,7 @@ public sealed class TopUpController(ITopUpService service) : ControllerBase
 {
     
     [HttpPost]
+    [Authorize(Policy = AppPolicies.CanPerformTransactions)]
     [ProducesResponseType(typeof(TopUpResponse),StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -48,6 +50,7 @@ public sealed class TopUpController(ITopUpService service) : ControllerBase
 
 
     [HttpPost("{id:long}/confirm")]
+    [Authorize(Policy = AppPolicies.CanPerformTransactions)]
     [ProducesResponseType(typeof(TopUpResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

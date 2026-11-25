@@ -2,6 +2,7 @@
 using Ewallet.Domain.Entities;
 using Ewallet.Application.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Ewallet.Mvc.Controllers;
 
@@ -13,6 +14,7 @@ public sealed class AuditLogController(IAuditLogService logService) : Controller
 {
     
     [HttpGet]
+    [Authorize(Roles = "ADMIN")]
     [ProducesResponseType(typeof(PagedResultLogs<AuditLogItemResponse>) ,StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult> GetAll ([FromQuery] AuditLogSearchRequest request ,CancellationToken ct)

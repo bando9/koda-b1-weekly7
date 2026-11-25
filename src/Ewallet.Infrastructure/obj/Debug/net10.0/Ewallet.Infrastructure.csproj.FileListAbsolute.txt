@@ -17,3 +17,4 @@ E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Infrastructure\o
 E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Infrastructure\obj\Debug\net10.0\Ewallet.Infrastructure.pdb
 E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Infrastructure\obj\Debug\net10.0\Ewallet.Infrastructure.genruntimeconfig.cache
 E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Infrastructure\obj\Debug\net10.0\ref\Ewallet.Infrastructure.dll
+E:\code\koda-projects\1-task\fase-2\koda-b1-weekly7\src\Ewallet.Infrastructure\obj\Debug\net10.0\Ewallet.Infrastructure.sourcelink.json

@@ -46,6 +46,7 @@ public sealed class ProfileController(
     IAppDbContext db) : ControllerBase
 {
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<UserProfileResponse>> GetProfile(CancellationToken ct)
     {
         var userId = User.GetRequiredUserId();
@@ -68,6 +69,7 @@ public sealed class ProfileController(
     }
 
     [HttpPut]
+    [Authorize]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request, CancellationToken ct)
     {
         var userId = User.GetRequiredUserId();
@@ -117,6 +119,7 @@ public sealed class ProfileController(
     }
 
     [HttpPost("change-password")]
+    [Authorize]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct)
     {
         var userId = User.GetRequiredUserId();

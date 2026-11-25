@@ -1,5 +1,6 @@
 using Ewallet.Application.DTOs;
 using Ewallet.Application.Repositories;
+using Ewallet.Application.Security;
 using Ewallet.Application.Services;
 using Ewallet.Domain.Entities;
 using Ewallet.Mvc.Extensions;
@@ -20,6 +21,8 @@ public sealed class WalletController(
 ) : ControllerBase
 {
     [HttpGet("me")]
+    [EndpointSummary("Ambil Data Pengguna & Wallet")]
+    [EndpointDescription("Mengambil detail profil & wallet pengguna berdasarkan jwt")]
     public async Task<IActionResult> GetMyWallet(CancellationToken ct)
     {
         var userId = User.GetRequiredUserId();
@@ -40,6 +43,7 @@ public sealed class WalletController(
     }
 
     [HttpGet("me/mutations")]
+    [Authorize(Policy = AppPolicies.CanAccessCustomerWallet)]
     [ProducesResponseType(typeof(PagedResult<MutationResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMyMutations([FromQuery] MutationQuery query, CancellationToken ct)
     {
@@ -56,6 +60,7 @@ public sealed class WalletController(
     }
 
     [HttpGet("me/transactions")]
+    [Authorize(Policy = AppPolicies.CanAccessCustomerWallet)]
     public async Task<IActionResult> GetMyTransactions(
         [FromQuery] string? search,
     [FromQuery] string? type,

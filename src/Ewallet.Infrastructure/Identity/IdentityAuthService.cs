@@ -44,8 +44,6 @@ public sealed class IdentityAuthService(UserManager<AppUser> user, IAppDbContext
             wallet?.Id ?? 0,
             wallet?.Balance ?? 0);
 
-        // var (accessToken,expiredAtUtc) = _jwtTokenGenerator
-
         return new LoginResult(true, response, null,null,null,null);
     }
 

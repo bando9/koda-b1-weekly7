@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Ewallet.Application.Repositories;
+using Ewallet.Application.Security;
 using Ewallet.Domain.Entities;
 using Ewallet.Infrastructure.Identity;
 using Ewallet.Mvc.Extensions;
@@ -27,6 +28,7 @@ public sealed class AdminUsersController(
     IAppDbContext db) : ControllerBase
 {
     [HttpGet]
+    [Authorize(Policy = AppPolicies.CanManageUsers)]
     public async Task<IActionResult> GetUsers(
         [FromQuery] string? search,
         [FromQuery] UserStatusEnum? status,
@@ -97,6 +99,7 @@ public sealed class AdminUsersController(
     }
 
     [HttpGet("{id:long}")]
+    [Authorize(Policy = AppPolicies.CanManageUsers)]
     public async Task<IActionResult> GetUserById(long id, CancellationToken ct)
     {
         var user = await userManager.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, ct);
@@ -128,6 +131,7 @@ public sealed class AdminUsersController(
     }
 
     [HttpPatch("{id:long}/status")]
+    [Authorize(Policy = AppPolicies.CanManageUsers)]
     public async Task<IActionResult> UpdateUserStatus(long id, [FromBody] UpdateUserStatusRequest request, CancellationToken ct)
     {
         var adminId = User.GetRequiredUserId();
@@ -201,6 +205,7 @@ public sealed class AdminUsersController(
 
 
     [HttpGet("summary")]
+    [Authorize(Policy = AppPolicies.CanManageUsers)]
     public async Task<IActionResult> GetUsersSummary(CancellationToken ct)
     {
         var nowUtc = DateTimeOffset.UtcNow;

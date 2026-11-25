@@ -1,4 +1,5 @@
 ﻿using Ewallet.Application.DTOs;
+using Ewallet.Application.Security;
 using Ewallet.Application.Services;
 using Ewallet.Mvc.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -14,6 +15,7 @@ public sealed class TransferController(ITransferService service): ControllerBase
 {
     
     [HttpPost]
+    [Authorize(Policy = AppPolicies.CanPerformTransactions)]
     [ProducesResponseType(typeof(TransferResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

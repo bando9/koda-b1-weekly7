@@ -15,6 +15,7 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.OpenApi;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.OpenApi;
+using Ewallet.Application.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -172,7 +173,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 });
 
 // *Authorization
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AppPolicies.CanAccessCustomerWallet, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(AppRoles.Customer);
+    });
+
+    options.AddPolicy(AppPolicies.CanPerformTransactions, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(AppRoles.Customer);
+    });
+
+    options.AddPolicy(AppPolicies.CanManageUsers, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole(AppRoles.Admin);
+    });
+});
 
 
 
@@ -221,8 +241,8 @@ app.UseRouting();
 
 app.UseCors("ReactClient");
 
-
 app.UseAuthentication();
+
 app.UseAuthorization();
 
 app.UseRateLimiter();
