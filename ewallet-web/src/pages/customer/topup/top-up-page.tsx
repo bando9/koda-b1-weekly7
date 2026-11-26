@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import { dashboardService, type WalletDto } from "@/service/dashboard-service"
 import { topUpService, type PaymentMethodDto } from "@/service/topup-service"
 import { formatRupiah, formatToRupiah } from "@/utils"
+import UseAuth from "@/hooks/use-auth"
 
 interface CustomerLayoutContext {
   displayName: string
@@ -24,6 +25,7 @@ export default function TopUpPage() {
   const context = useOutletContext<CustomerLayoutContext | undefined>()
   const displayName = context?.displayName ?? "Pengguna"
   const initials = context?.initials ?? "U"
+  const { accessToken } = UseAuth()
 
   const [wallet, setWallet] = useState<WalletDto | null>(null)
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodDto[]>([])
@@ -41,7 +43,7 @@ export default function TopUpPage() {
     async function loadInitialData() {
       try {
         const [walletRes, methodsRes] = await Promise.all([
-          dashboardService.getMyWallet(),
+          dashboardService.getMyWallet(accessToken),
           topUpService.getPaymentMethods(),
         ])
 
@@ -108,10 +110,13 @@ export default function TopUpPage() {
     try {
       setIsSubmitting(true)
 
-      const createdTopUp = await topUpService.createTopUp({
-        paymentMethodId: chosenMethod.id,
-        amount: numericAmount,
-      })
+      const createdTopUp = await topUpService.createTopUp(
+        {
+          paymentMethodId: chosenMethod.id,
+          amount: numericAmount,
+        },
+        accessToken
+      )
 
       if (chosenMethod.code.toUpperCase() === "QRIS") {
         navigate("/dashboard/top-up/qris", {

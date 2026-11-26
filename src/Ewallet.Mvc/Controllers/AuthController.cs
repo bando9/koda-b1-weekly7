@@ -199,12 +199,12 @@ public sealed class AuthController(
     {
         Response.Cookies.Append(RefreshCookieName,rawRefreshToken,new CookieOptions
         {
-            HttpOnly=true, // menyetujui
-            Secure= !_environtment.IsDevelopment() || Request.IsHttps, // berjalan di dev/https
+            HttpOnly=true, 
+            Secure= !_environtment.IsDevelopment() || Request.IsHttps,
             SameSite = SameSiteMode.Lax,
             Path = "/api/v1/auth",
             Expires = expiresAtUtc,
-            IsEssential = true // digunakan untuk cookie, untuk kebutuhan auth-nya
+            IsEssential = true 
         });
     }
 

@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api"
+import { apiRequest } from "./auth-api"
 
 export interface PaymentMethodDto {
   id: number
@@ -29,18 +29,28 @@ export interface CreateTopUpPayload {
 }
 
 export const topUpService = {
-  getPaymentMethods: () => apiFetch<PaymentMethodDto[]>("/payment-methods"),
+  getPaymentMethods: () => apiRequest<PaymentMethodDto[]>("/payment-methods"),
 
-  createTopUp: (payload: CreateTopUpPayload) =>
-    apiFetch<TopUpResponseDto>("/topups", {
+  createTopUp: (payload: CreateTopUpPayload, accessToken: string | null) =>
+    apiRequest<TopUpResponseDto>("/topups", {
       method: "POST",
       body: JSON.stringify(payload),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
     }),
 
-  getTopUpById: (id: number) => apiFetch<TopUpResponseDto>(`/topups/${id}`),
+  getTopUpById: (id: number, accessToken: string | null) =>
+    apiRequest<TopUpResponseDto>(`/topups/${id}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }),
 
-  confirmTopUp: (id: number) =>
-    apiFetch<TopUpResponseDto>(`/topups/${id}/confirm`, {
+  confirmTopUp: (id: number, accessToken: string | null) =>
+    apiRequest<TopUpResponseDto>(`/topups/${id}/confirm`, {
       method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     }),
 }

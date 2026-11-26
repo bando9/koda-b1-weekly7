@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { dashboardService } from "@/service/dashboard-service"
 import { topUpService } from "@/service/topup-service"
 import { formatToRupiah } from "@/utils"
+import UseAuth from "@/hooks/use-auth"
 
 interface TopUpQrisState {
   topUpRequestId?: number
@@ -20,6 +21,7 @@ interface TopUpQrisState {
 export default function TopUpQrisPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { accessToken } = UseAuth()
 
   const state = (location.state as TopUpQrisState | null) ?? {}
   const topUpRequestId = state.topUpRequestId
@@ -41,10 +43,13 @@ export default function TopUpQrisPage() {
     setIsSubmitting(true)
 
     try {
-      const confirmed = await topUpService.confirmTopUp(topUpRequestId)
+      const confirmed = await topUpService.confirmTopUp(
+        topUpRequestId,
+        accessToken
+      )
 
       const updatedWallet = await dashboardService
-        .getMyWallet()
+        .getMyWallet(accessToken)
         .catch(() => null)
 
       navigate("/dashboard/top-up/success", {

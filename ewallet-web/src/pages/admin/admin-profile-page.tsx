@@ -31,8 +31,8 @@ export default function AdminProfilePage() {
   const initials = context?.initials ?? "AD"
 
   const adminProfile = {
-    fullName: user?.name || "Admin KodaWallet",
-    username: user?.username || "admin",
+    fullName: user?.fullName || "Admin KodaWallet",
+    username: user?.userName || "admin",
     email: user?.email || "admin@kodawallet.com",
     role: "Administrator",
     status: "Aktif",

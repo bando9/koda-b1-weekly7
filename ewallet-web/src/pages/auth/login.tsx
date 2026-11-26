@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import UseAuth from "@/hooks/use-auth"
 import { resolveDestination } from "@/lib/auth-route"
 import { ApiError } from "@/service/auth-api"
-import { tokenStorage } from "@/lib/api"
+// import { tokenStorage } from "@/lib/api"
 
 interface LocationState {
   from?: { pathname: string }
@@ -45,6 +45,10 @@ export default function LoginPage() {
       errors.password = "Password wajib diisi."
     }
 
+    if (password.length < 6) {
+      errors.password = "Passwod kurang dari 6"
+    }
+
     setFieldErrors(errors)
     return Object.keys(errors).length === 0
   }
@@ -58,9 +62,7 @@ export default function LoginPage() {
     setIsLoading(true)
     try {
       const session = await login({ identifier, password })
-      if (session?.accessToken) {
-        tokenStorage.set(session.accessToken)
-      }
+
       navigate(resolveDestination(session.user.role, state?.from?.pathname), {
         replace: true,
       })
@@ -194,7 +196,7 @@ export default function LoginPage() {
                     }
                   }}
                   placeholder="••••••••••••"
-                  className={`h-11 rounded-lg border-transparent bg-transparent pr-10 pl-3 text-sm text-[#0F172A] shadow-none transition-colors placeholder:text-[#0F172A] focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54] ${
+                  className={`h-11 rounded-lg border-transparent bg-transparent pr-10 pl-3 text-sm text-[#0F172A] placeholder-gray-900 shadow-none transition-colors focus-visible:border-[#135D54] focus-visible:bg-white focus-visible:ring-1 focus-visible:ring-[#135D54] ${
                     !showPassword && password ? "tracking-widest" : ""
                   } ${
                     fieldErrors.password

@@ -27,6 +27,7 @@ import {
   dashboardService,
   type UserProfileDto,
 } from "@/service/dashboard-service"
+import UseAuth from "@/hooks/use-auth"
 
 interface AdminLayoutContext {
   displayName: string
@@ -54,6 +55,7 @@ function formatRegisteredDate(isoString?: string): string {
 export default function AdminUserDetailPage() {
   const { userId } = useParams<{ userId: string }>()
   const context = useOutletContext<AdminLayoutContext | undefined>()
+  const { accessToken } = UseAuth()
 
   const [adminProfile, setAdminProfile] = useState<UserProfileDto | null>(null)
   const [customer, setCustomer] = useState<AdminUserItemDto | null>(null)
@@ -67,11 +69,14 @@ export default function AdminUserDetailPage() {
   const [statusFeedback, setStatusFeedback] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
+  const numericId = Number(userId)
+  const isInvalid = userId || Number.isNaN(numericId) || numericId <= 0
+
   useEffect(() => {
     let isCancelled = false
 
     dashboardService
-      .getProfile()
+      .getProfile(accessToken)
       .then((res) => {
         if (!isCancelled) setAdminProfile(res)
       })
@@ -80,17 +85,13 @@ export default function AdminUserDetailPage() {
     return () => {
       isCancelled = true
     }
-  }, [])
+  }, [accessToken])
 
   useEffect(() => {
     let isCancelled = false
     const numericId = Number(userId)
 
-    if (!userId || Number.isNaN(numericId) || numericId <= 0) {
-      setFetchError("ID pengguna tidak valid.")
-      setIsLoading(false)
-      return
-    }
+    if (!isInvalid) return
 
     async function fetchUserDetail() {
       try {
@@ -117,7 +118,7 @@ export default function AdminUserDetailPage() {
     return () => {
       isCancelled = true
     }
-  }, [userId, refreshKey])
+  }, [userId, refreshKey, isInvalid])
 
   const displayName = adminProfile?.fullName || context?.displayName || "Admin"
   const adminInitials = adminProfile?.fullName

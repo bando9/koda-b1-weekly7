@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { dashboardService, type WalletDto } from "@/service/dashboard-service"
 import { formatRupiah, formatToRupiah } from "@/utils"
+import UseAuth from "@/hooks/use-auth"
 
 interface CustomerLayoutContext {
   displayName: string
@@ -21,12 +22,13 @@ export default function TransferPage() {
   const context = useOutletContext<CustomerLayoutContext | undefined>()
   const displayName = context?.displayName ?? "Pengguna"
   const initials = context?.initials ?? "U"
+  const { accessToken } = UseAuth()
 
   const [wallet, setWallet] = useState<WalletDto | null>(null)
   const [isLoadingWallet, setIsLoadingWallet] = useState<boolean>(true)
 
   const [receiverWalletNumber, setReceiverWalletNumber] = useState<string>("")
-  const [rawAmount, setRawAmount] = useState<string>("75000")
+  const [rawAmount, setRawAmount] = useState<string>("")
   const [note, setNote] = useState<string>("")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -34,7 +36,7 @@ export default function TransferPage() {
     let isCancelled = false
 
     dashboardService
-      .getMyWallet()
+      .getMyWallet(accessToken)
       .then((res) => {
         if (!isCancelled) setWallet(res)
       })
@@ -46,7 +48,7 @@ export default function TransferPage() {
     return () => {
       isCancelled = true
     }
-  }, [])
+  }, [accessToken])
 
   const availableBalance = wallet?.balance ?? 0
   const numericAmount = Number(rawAmount) || 0

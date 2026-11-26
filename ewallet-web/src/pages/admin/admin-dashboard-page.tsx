@@ -16,6 +16,7 @@ import {
   dashboardService,
   type UserProfileDto,
 } from "@/service/dashboard-service"
+import UseAuth from "@/hooks/use-auth"
 
 interface AdminLayoutContext {
   displayName: string
@@ -35,6 +36,7 @@ function formatNumber(num: number): string {
 
 export default function AdminDashboardPage() {
   const context = useOutletContext<AdminLayoutContext | undefined>()
+  const { accessToken } = UseAuth()
 
   const [profile, setProfile] = useState<UserProfileDto | null>(null)
   const [summary, setSummary] = useState<AdminUserSummaryDto | null>(null)
@@ -50,9 +52,9 @@ export default function AdminDashboardPage() {
     async function fetchAdminDashboard() {
       try {
         const [profileRes, summaryRes, usersRes] = await Promise.all([
-          dashboardService.getProfile().catch(() => null),
-          adminService.getUsersSummary(),
-          adminService.getUsers({ page: 1, pageSize: 4 }),
+          dashboardService.getProfile(accessToken).catch(() => null),
+          adminService.getUsersSummary(accessToken),
+          adminService.getUsers(accessToken, { page: 1, pageSize: 4 }),
         ])
 
         if (!isCancelled) {

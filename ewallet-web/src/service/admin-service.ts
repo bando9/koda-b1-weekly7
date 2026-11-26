@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api"
+import { apiRequest } from "./auth-api"
 
 export interface AdminUserSummaryDto {
   totalUsers: number
@@ -32,14 +32,20 @@ export interface PagedAdminUsersDto {
 }
 
 export const adminService = {
-  getUsersSummary: () => apiFetch<AdminUserSummaryDto>("/admin/users/summary"),
+  getUsersSummary: (accessToken: string | null) =>
+    apiRequest<AdminUserSummaryDto>("/admin/users/summary", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }),
 
-  getUsers: (params?: {
-    search?: string
-    status?: string
-    page?: number
-    pageSize?: number
-  }) => {
+  getUsers: (
+    accessToken: string | null,
+    params?: {
+      search?: string
+      status?: string
+      page?: number
+      pageSize?: number
+    }
+  ) => {
     const query = new URLSearchParams()
     if (params?.search?.trim()) query.set("search", params.search.trim())
     if (params?.status && params.status !== "all")
@@ -47,13 +53,19 @@ export const adminService = {
     query.set("page", String(params?.page ?? 1))
     query.set("pageSize", String(params?.pageSize ?? 10))
 
-    return apiFetch<PagedAdminUsersDto>(`/admin/users?${query.toString()}`)
+    return apiRequest<PagedAdminUsersDto>(`/admin/users?${query.toString()}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
   },
 
-  getUserById: (id: number) => apiFetch<AdminUserItemDto>(`/admin/users/${id}`),
+  getUserById: (id: number) =>
+    apiRequest<AdminUserItemDto>(`/admin/users/${id}`),
 
   updateUserStatus: (id: number, status: "ACTIVE" | "SUSPENDED") =>
-    apiFetch<{ id: number; status: string }>(`/admin/users/${id}/status`, {
+    apiRequest<{ id: number; status: string }>(`/admin/users/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
     }),

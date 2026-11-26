@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { transferService } from "@/service/transfer-service"
 import { formatToRupiah } from "@/utils"
+import UseAuth from "@/hooks/use-auth"
 
 interface TransferConfirmState {
   receiverWalletNumber?: string
@@ -18,6 +19,7 @@ interface TransferConfirmState {
 export default function TransferConfirmPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { accessToken } = UseAuth()
 
   const state = (location.state as TransferConfirmState | null) ?? {}
   const receiverWalletNumber = state.receiverWalletNumber
@@ -44,11 +46,14 @@ export default function TransferConfirmPage() {
 
     setIsSubmitting(true)
     try {
-      const result = await transferService.createTransfer({
-        receiverWalletNumber,
-        amount,
-        description: note.trim() ? note.trim() : undefined,
-      })
+      const result = await transferService.createTransfer(
+        {
+          receiverWalletNumber,
+          amount,
+          description: note.trim() ? note.trim() : undefined,
+        },
+        accessToken
+      )
 
       navigate("/dashboard/transfer/success", {
         replace: true,

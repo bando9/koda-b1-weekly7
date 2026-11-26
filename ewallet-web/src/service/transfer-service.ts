@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api"
+import { apiRequest } from "./auth-api"
 
 export interface CreateTransferPayload {
   receiverWalletNumber: string
@@ -20,9 +20,16 @@ export interface TransferResponseDto {
 }
 
 export const transferService = {
-  createTransfer: (payload: CreateTransferPayload) =>
-    apiFetch<TransferResponseDto>("/transfers", {
+  createTransfer: (
+    payload: CreateTransferPayload,
+    accessToken: string | null
+  ) =>
+    apiRequest<TransferResponseDto>("/transfers", {
       method: "POST",
       body: JSON.stringify(payload),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
     }),
 }

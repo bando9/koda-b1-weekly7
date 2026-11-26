@@ -13,6 +13,7 @@ import {
   type WalletDto,
 } from "@/service/dashboard-service"
 import { formatToRupiah } from "@/utils"
+import UseAuth from "@/hooks/use-auth"
 
 interface CustomerLayoutContext {
   displayName: string
@@ -76,6 +77,7 @@ function mapTransactionStatus(status: string): {
 
 export default function CustomerDashboardPage() {
   const context = useOutletContext<CustomerLayoutContext | undefined>()
+  const { accessToken } = UseAuth()
 
   const [profile, setProfile] = useState<UserProfileDto | null>(null)
   const [wallet, setWallet] = useState<WalletDto | null>(null)
@@ -90,9 +92,9 @@ export default function CustomerDashboardPage() {
     async function fetchDashboard() {
       try {
         const [profileRes, walletRes, txRes] = await Promise.all([
-          dashboardService.getProfile(),
-          dashboardService.getMyWallet(),
-          dashboardService.getRecentTransactions(1, 5),
+          dashboardService.getProfile(accessToken),
+          dashboardService.getMyWallet(accessToken),
+          dashboardService.getRecentTransactions(1, 5, accessToken),
         ])
 
         if (!isCancelled) {
@@ -119,7 +121,7 @@ export default function CustomerDashboardPage() {
     return () => {
       isCancelled = true
     }
-  }, [refreshKey])
+  }, [refreshKey, accessToken])
 
   const handleRetry = () => {
     setIsLoading(true)

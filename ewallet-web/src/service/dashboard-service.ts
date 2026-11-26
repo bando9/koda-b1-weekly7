@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api"
+import { apiRequest } from "./auth-api"
 
 export interface UserProfileDto {
   id: number
@@ -48,14 +48,26 @@ export interface TransactionFilterParams {
 }
 
 export const dashboardService = {
-  getProfile: () => apiFetch<UserProfileDto>("/profile"),
-  getMyWallet: () => apiFetch<WalletDto>("/wallets/me"),
-  getRecentTransactions: (page = 1, pageSize = 5) =>
-    apiFetch<PagedTransactionsDto>(
-      `/wallets/me/transactions?page=${page}&pageSize=${pageSize}`
+  getProfile: async (accessToken: string | null) =>
+    apiRequest<UserProfileDto>("/profile", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }),
+
+  getMyWallet: (accessToken: string | null) =>
+    apiRequest<WalletDto>("/wallets/me", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    }),
+
+  getRecentTransactions: (page = 1, pageSize = 5, accessToken: string | null) =>
+    apiRequest<PagedTransactionsDto>(
+      `/wallets/me/transactions?page=${page}&pageSize=${pageSize}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
     ),
 
-  getTransactions: (params: TransactionFilterParams) => {
+  getTransactions: (
+    params: TransactionFilterParams,
+    accessToken: string | null
+  ) => {
     const query = new URLSearchParams()
     if (params.search?.trim()) query.set("search", params.search.trim())
     if (params.type && params.type !== "all") query.set("type", params.type)
@@ -65,8 +77,9 @@ export const dashboardService = {
     query.set("page", String(params.page ?? 1))
     query.set("pageSize", String(params.pageSize ?? 4))
 
-    return apiFetch<PagedTransactionsDto>(
-      `/wallets/me/transactions?${query.toString()}`
+    return apiRequest<PagedTransactionsDto>(
+      `/wallets/me/transactions?${query.toString()}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
     )
   },
 }

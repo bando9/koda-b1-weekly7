@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { dashboardService } from "@/service/dashboard-service"
 import { topUpService } from "@/service/topup-service"
+import UseAuth from "@/hooks/use-auth"
 
 interface TopUpConfirmState {
   topUpRequestId?: number
@@ -25,6 +26,7 @@ function formatRupiah(amount: number): string {
 export default function TopUpConfirmPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { accessToken } = UseAuth()
 
   const state = (location.state as TopUpConfirmState | null) ?? {}
   const topUpRequestId = state.topUpRequestId
@@ -47,10 +49,13 @@ export default function TopUpConfirmPage() {
     setIsSubmitting(true)
 
     try {
-      const confirmed = await topUpService.confirmTopUp(topUpRequestId)
+      const confirmed = await topUpService.confirmTopUp(
+        topUpRequestId,
+        accessToken
+      )
 
       const updatedWallet = await dashboardService
-        .getMyWallet()
+        .getMyWallet(accessToken)
         .catch(() => null)
 
       navigate("/dashboard/top-up/success", {

@@ -20,6 +20,7 @@ import {
   dashboardService,
   type UserProfileDto,
 } from "@/service/dashboard-service"
+import UseAuth from "@/hooks/use-auth"
 
 interface AdminLayoutContext {
   displayName: string
@@ -37,6 +38,7 @@ function getInitials(name: string): string {
 
 export default function AdminUsersPage() {
   const context = useOutletContext<AdminLayoutContext | undefined>()
+  const { accessToken } = UseAuth()
 
   const [profile, setProfile] = useState<UserProfileDto | null>(null)
   const [users, setUsers] = useState<AdminUserItemDto[]>([])
@@ -57,7 +59,7 @@ export default function AdminUsersPage() {
     let isCancelled = false
 
     dashboardService
-      .getProfile()
+      .getProfile(accessToken)
       .then((res) => {
         if (!isCancelled) setProfile(res)
       })
@@ -66,14 +68,14 @@ export default function AdminUsersPage() {
     return () => {
       isCancelled = true
     }
-  }, [])
+  }, [accessToken])
 
   useEffect(() => {
     let isCancelled = false
 
     async function fetchUsers() {
       try {
-        const res = await adminService.getUsers({
+        const res = await adminService.getUsers(accessToken, {
           search: appliedSearch,
           status: appliedStatus,
           page: currentPage,
@@ -103,7 +105,7 @@ export default function AdminUsersPage() {
     return () => {
       isCancelled = true
     }
-  }, [appliedSearch, appliedStatus, currentPage, refreshKey])
+  }, [appliedSearch, appliedStatus, currentPage, refreshKey, accessToken])
 
   const displayName = profile?.fullName || context?.displayName || "Admin"
   const initials = profile?.fullName

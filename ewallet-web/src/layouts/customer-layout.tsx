@@ -114,7 +114,7 @@ function SidebarContent({
 
 export default function CustomerLayout() {
   const navigate = useNavigate()
-  const { user, logout } = UseAuth()
+  const { user, logout, accessToken } = UseAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [profile, setProfile] = useState<UserProfileDto | null>(null)
 
@@ -122,7 +122,7 @@ export default function CustomerLayout() {
     let isCancelled = false
 
     dashboardService
-      .getProfile()
+      .getProfile(accessToken)
       .then((res) => {
         if (!isCancelled) {
           setProfile(res)
@@ -133,7 +133,7 @@ export default function CustomerLayout() {
     return () => {
       isCancelled = true
     }
-  }, [])
+  }, [accessToken])
 
   const authUser = user as {
     fullName?: string

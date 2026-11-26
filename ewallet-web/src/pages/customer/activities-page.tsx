@@ -20,6 +20,7 @@ import {
   type TransactionDto,
   type UserProfileDto,
 } from "@/service/dashboard-service"
+import UseAuth from "@/hooks/use-auth"
 
 interface CustomerLayoutContext {
   displayName: string
@@ -75,6 +76,8 @@ function mapStatusLabel(status: string): "Berhasil" | "Diproses" | "Gagal" {
 export default function ActivitiesPage() {
   const context = useOutletContext<CustomerLayoutContext | undefined>()
 
+  const { accessToken } = UseAuth()
+
   const [profile, setProfile] = useState<UserProfileDto | null>(null)
   const [transactions, setTransactions] = useState<TransactionDto[]>([])
   const [totalCount, setTotalCount] = useState<number>(0)
@@ -102,7 +105,7 @@ export default function ActivitiesPage() {
     let isCancelled = false
 
     dashboardService
-      .getProfile()
+      .getProfile(accessToken)
       .then((res) => {
         if (!isCancelled) setProfile(res)
       })
@@ -125,14 +128,17 @@ export default function ActivitiesPage() {
           "90d": 90,
         }
 
-        const res = await dashboardService.getTransactions({
-          search: debouncedSearch,
-          type: selectedType,
-          status: selectedStatus,
-          days: daysMap[selectedDateRange],
-          page: currentPage,
-          pageSize: ITEMS_PER_PAGE,
-        })
+        const res = await dashboardService.getTransactions(
+          {
+            search: debouncedSearch,
+            type: selectedType,
+            status: selectedStatus,
+            days: daysMap[selectedDateRange],
+            page: currentPage,
+            pageSize: ITEMS_PER_PAGE,
+          },
+          accessToken
+        )
 
         if (!isCancelled) {
           setTransactions(res.items)
@@ -166,6 +172,7 @@ export default function ActivitiesPage() {
     selectedDateRange,
     currentPage,
     refreshKey,
+    accessToken,
   ])
 
   const displayName = profile?.fullName ?? context?.displayName ?? "Pengguna"

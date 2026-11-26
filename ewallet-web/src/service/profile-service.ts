@@ -1,5 +1,5 @@
-import { apiFetch } from "@/lib/api"
 import type { UserProfileDto } from "./dashboard-service"
+import { apiRequest } from "./auth-api"
 
 export interface UpdateProfilePayload {
   fullName: string
@@ -12,17 +12,31 @@ export interface ChangePasswordPayload {
 }
 
 export const profileService = {
-  getProfile: () => apiFetch<UserProfileDto>("/profile"),
-
-  updateProfile: (payload: UpdateProfilePayload) =>
-    apiFetch<UserProfileDto>("/profile", {
-      method: "PUT",
-      body: JSON.stringify(payload),
+  getProfile: (accessToken: string | null) =>
+    apiRequest<UserProfileDto>("/profile", {
+      headers: { Authorization: `Bearer ${accessToken}` },
     }),
 
-  changePassword: (payload: ChangePasswordPayload) =>
-    apiFetch<{ message: string }>("/profile/change-password", {
+  updateProfile: (payload: UpdateProfilePayload, accessToken: string | null) =>
+    apiRequest<UserProfileDto>("/profile", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }),
+
+  changePassword: (
+    payload: ChangePasswordPayload,
+    accessToken: string | null
+  ) =>
+    apiRequest<{ message: string }>("/profile/change-password", {
       method: "POST",
       body: JSON.stringify(payload),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
     }),
 }

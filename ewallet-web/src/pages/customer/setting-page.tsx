@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { profileService } from "@/service/profile-service"
+import UseAuth from "@/hooks/use-auth"
 
 interface CustomerLayoutContext {
   displayName: string
@@ -33,6 +34,7 @@ function getInitials(name: string): string {
 
 export default function SettingsPage() {
   const context = useOutletContext<CustomerLayoutContext | undefined>()
+  const { accessToken } = UseAuth()
 
   const [fullName, setFullName] = useState("")
   const [username, setUsername] = useState("")
@@ -57,7 +59,7 @@ export default function SettingsPage() {
     let isCancelled = false
 
     profileService
-      .getProfile()
+      .getProfile(accessToken)
       .then((res) => {
         if (!isCancelled) {
           setFullName(res.fullName)
@@ -82,7 +84,7 @@ export default function SettingsPage() {
     return () => {
       isCancelled = true
     }
-  }, [])
+  }, [accessToken])
 
   const displayName = fullName.trim() || context?.displayName || "Pengguna"
   const initials = fullName.trim()
@@ -101,10 +103,13 @@ export default function SettingsPage() {
 
     setIsSavingProfile(true)
     try {
-      const updated = await profileService.updateProfile({
-        fullName: fullName.trim(),
-        phoneNumber: phoneNumber.trim(),
-      })
+      const updated = await profileService.updateProfile(
+        {
+          fullName: fullName.trim(),
+          phoneNumber: phoneNumber.trim(),
+        },
+        accessToken
+      )
 
       setFullName(updated.fullName)
       setPhoneNumber(updated.phoneNumber)
@@ -152,10 +157,13 @@ export default function SettingsPage() {
 
     setIsSavingPassword(true)
     try {
-      const res = await profileService.changePassword({
-        currentPassword,
-        newPassword,
-      })
+      const res = await profileService.changePassword(
+        {
+          currentPassword,
+          newPassword,
+        },
+        accessToken
+      )
 
       setIsPasswordModalOpen(false)
       setProfileSuccess(res.message || "Kata sandi akun berhasil diperbarui.")
